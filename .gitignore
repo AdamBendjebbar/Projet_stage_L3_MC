@@ -7,3 +7,8 @@
 *.fls
 *.pdf
 __pycache__/
+.idea/
+__pycache__/
+*.pdf
+*.aux
+*.log
