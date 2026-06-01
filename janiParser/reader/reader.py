@@ -68,18 +68,24 @@ class JaniReader(object):
         self._isLocalPath = isLocalPath
     
     def _load(self):
+        # If the path points to a local file, read it from disk and parse its JSON content.
         if self._isLocalPath:
             with open(self._path, "r", encoding="utf-8-sig") as file:
+                # Parse the full file content as JSON into a Python object.
                 res = loads(file.read())
         else:
+            # Otherwise, treat the path as a URL and fetch the remote content.
             res = requests.get(self._path)
+            # Raise an exception for HTTP error responses (4xx/5xx).
             res.raise_for_status()
+            # Parse the HTTP response body as JSON into a Python object.
             res = loads(res.text)
+        # Return the parsed JSON structure.
         return res
 
 
     def build(self):
-        """Parse and build a JANI model from the target file."""
+        # Parse and build a JaniModel object from the target file.
         modelStruct = self._load()
         print("Start parsing")
         model = self._parseModel(modelStruct)
@@ -87,7 +93,8 @@ class JaniReader(object):
         return model
 
     def _parseModel(self, modelStruct):
-        """Parse the root model structure."""
+         # Parse the root model structure
+        
         if "name" not in modelStruct:
             raise JaniSyntaxError("Model must have a name")
         name = modelStruct["name"]
@@ -100,22 +107,29 @@ class JaniReader(object):
                                           "Only 'mdp' and 'dtmc' are supported")
         model = JaniModel(name, type)
 
+        # Parse and register action declarations used by automata edges/synchronization.
         self._parseActions(model, modelStruct.get("actions", []))
         if "system" not in modelStruct:
             raise JaniSyntaxError(f"Model '{name}' must have a system composition")
+        # Parse the system composition (elements and synchronization structure).
         self._parseSystem(model, modelStruct["system"])
+        # Parse global constant declarations and their values.
         self._parseConstants(model, modelStruct.get("constants", []))
+        # Parse global variable declarations.
         self._parseVariables(model, modelStruct.get("variables", []), ("global", ))
+        # Parse global function declarations/definitions.
         self._parseFunctions(model, modelStruct.get("functions", []), ("global", ))
 
         if "automata" not in modelStruct:
             raise JaniSyntaxError(f"Model '{name}' must have an automata composition")
         for autamata in modelStruct["automata"]:
+            # Parse each automaton and add it to the model.
             model.addAutomata(self._parseAutomata(model, autamata))
         
         if "properties" not in modelStruct or type == "dtmc":
             pass
         else:
+            # Parse model properties (for supported non-DTMC cases).
             self._parseProperties(model, modelStruct["properties"])
         model.synchronize()
         return model
@@ -136,6 +150,7 @@ class JaniReader(object):
         for idx, elem in enumerate(system["elements"]):
             if "automaton" not in elem:
                 raise JaniSyntaxError("System element must have an 'automaton' field")
+            # Build a map: automaton name -> index, used later to place each parsed automaton in the model.
             automataIndices[elem["automaton"]] = idx
         
         if "syncs" in system:
@@ -144,9 +159,16 @@ class JaniReader(object):
                 for act in sync.get("synchronise", []):
                     if act is not None and not model.containsAction(act):
                         raise JaniSyntaxError(f"Undefined action '{act}' reference in synchronise")
+                    # Collect per-automaton actions to synchronize into one resulting action.
                     preSyncActions.append(act)
+                # Store one synchronization rule: (result action name, list of source actions per automaton).
                 preSyncActionss.append((sync.get("result", f"act{idx}.sync"),
                                         preSyncActions))
+        # Push parsed system data into the JaniModel object.
+        # In JaniModel.setSystemInformation(...), this initializes:
+        # - _automataIndices: automaton placement order,
+        # - _preSyncActionss: synchronization recipe,
+        # - _nonSyncAutomatas: fixed-size container for upcoming addAutomata(...) calls.
         model.setSystemInformation(automataIndices, preSyncActionss)
 
     def _parseExpression(self, model: JaniModel, expr, scope, funcParams=set()):
@@ -165,38 +187,43 @@ class JaniReader(object):
         Returns:
             out: The corresponding Expression object.
         """
-        # Parse primitive constant expressions.
+        # Handle primitive literals (int/float/bool) as constant expressions.
         if isinstance(expr, (int, float, bool)):
             return Expression.createConstExpression(expr)
-        # Parse variable references.
+        # Handle string expressions as variable or constant references.
         if isinstance(expr, str):
+            # If the name is a declared constant, resolve it immediately to its constant value.
             if model.isConstantVariable(expr):
                 return Expression.createConstExpression(model.getConstantValue(expr))
+            # Keep global variables and function parameters unchanged.
             if model.isGlobalVariable(expr) or expr in funcParams:
                 name = expr
             else:
+                # For local scope, qualify the variable name with the automaton suffix.
                 assert len(scope) == 2
                 name = f"{expr}.{scope[1]}"
                 if not model.containsVariable(name):
                     raise JaniSyntaxError(f"Unknown variable '{name}' reference")
             return Expression("var", name)
-        # Parse complex expressions.
+        # For structured expressions, an operator field is required.
         if "op" not in expr:
             raise JaniSyntaxError("Invalid expression structure.\n"
                                   "Complex expression must contain a 'op' field")
         operator = expr["op"]
+        # Parse unary operators using the single sub-expression in 'exp'.
         if operator in UNARY_OPERATORS:
             if "exp" not in expr:
                 raise JaniSyntaxError("Unary expression must have an 'exp' field")
             return Expression.reduceExpression(operator,
                                                self._parseExpression(model, expr["exp"], scope, funcParams))
+        # Parse binary operators using 'left' and 'right' sub-expressions.
         if operator in BINARY_OPERATORS:
             if "left" not in expr or "right" not in expr:
                 raise JaniSyntaxError("Binary expression must have a 'left' field and a 'right' field")
             return Expression.reduceExpression(operator,
                                                self._parseExpression(model, expr["left"], scope, funcParams),
                                                self._parseExpression(model, expr["right"], scope, funcParams))
-        # Parse if-then-else expressions.
+        # Parse if-then-else expression ('ite') with condition, then-branch, and else-branch.
         if operator == "ite":
             if "if" not in expr or "then" not in expr or "else" not in expr:
                 raise JaniSyntaxError("If-then-else expression must have an 'if' field, "
@@ -205,7 +232,7 @@ class JaniReader(object):
                                                self._parseExpression(model, expr["if"], scope, funcParams),
                                                self._parseExpression(model, expr["then"], scope, funcParams),
                                                self._parseExpression(model, expr["else"], scope, funcParams))
-        # Parse function calls.
+        # Parse function call expressions and recursively parse each argument.
         if operator == "call":
             if "function" not in expr:
                 raise JaniSyntaxError("Missing calling function identifier")
@@ -224,21 +251,23 @@ class JaniReader(object):
 
     def _parseType(self, model: JaniModel, type, scope):
         """Parse type definition."""
-        # Parse primitive types.
+        # Handle primitive type declarations directly: int, real, or bool.
         if isinstance(type, str):
             if type not in ["int", "real", "bool"]:
                 raise UnsupportedFeatureError(f"Unsupported type '{type}'")
             return Type(type)
-        # Parse complex types.
+        # Handle structured/complex type declarations (dictionary form).
         if "kind" not in type:
             raise JaniSyntaxError("Complex type must have a 'kind' field")
         kind = type["kind"]
+        # This parser currently supports only bounded numeric types.
         if kind != "bounded":
             raise UnsupportedFeatureError(f"Unsupported kind '{kind}'.\n"
                                           "Only 'bounded' type are supported.")
         if "base" not in type:
             raise JaniSyntaxError("Complex type must have a 'base' field")
         base = type["base"]
+        # Bounded type base must be numeric (int or real).
         if base not in ["int", "real"]:
             raise UnsupportedFeatureError(f"Unsupported base '{base}'.\n",
                                           "Only 'int' and 'real' are supported")
@@ -246,72 +275,95 @@ class JaniReader(object):
             raise JaniSyntaxError("Complex type (bounded) must have a 'lower-bound' field")
         if "upper-bound" not in type:
             raise JaniSyntaxError("Complex type (bounded) must have a 'upper-bound' field")
+        # Parse both bounds as expressions in the current scope.
         lower = self._parseExpression(model, type["lower-bound"], scope)
         upper = self._parseExpression(model, type["upper-bound"], scope)
+        # Bounds must resolve to constant expressions (no runtime/state dependency).
         if not lower.isConstExpression() or not upper.isConstExpression():
             raise RequiredConstantExpressionError("Type bounds must be constant expression")
+        # Evaluate bound expressions to concrete numeric values.
         lower = lower.eval()
         upper = upper.eval()
+        # Return a bounded Type(base, (lower, upper)).
         return Type(base, (lower, upper))
 
     def _parseConstants(self, model: JaniModel, constants):
         """Parse constant declarations."""
+        # Iterate over all constant declarations from the model structure.
         for const in constants:
             if "name" not in const:
                 raise JaniSyntaxError("Constant must have a name")
+            # Extract the constant identifier.
             name = const["name"]
 
             if "type" not in const:
                 raise JaniSyntaxError(f"The type of constant '{name}' must be specified")
+            # Parse the declared constant type in global scope.
             type = self._parseType(model, const["type"], ("global", ))
 
             if "value" not in const:
+                # If no inline value is provided, resolve it from external model parameters.
                 if name not in self._modelParams:
                     raise MissingModelParameterError(f"Missing constant value '{name}'")
                 value = self._modelParams[name]
             else:
+                # Parse the inline constant value expression in global scope.
                 value = self._parseExpression(model, const["value"], ("global", ))
                 if not value.isConstExpression():
                     raise RequiredConstantExpressionError(f"Constant '{name}' value must be constant expression")
+                # Evaluate constant expression to a concrete value before registration.
                 value = value.eval()
+            # Register the parsed constant in the JaniModel object.
             model.addConstant(Constant(name, type, value))
 
     def _parseVariables(self, model: JaniModel, variables, scope):
         """Parse variables declarations."""
+        # Determine whether current declarations belong to global or local scope.
         isGlobal = scope[0] == "global"
         for var in variables:
             if "name" not in var:
                 raise JaniSyntaxError("Variable must have a name")
+            # Read variable name from declaration.
             name = var["name"]
             if not isGlobal:
                 assert len(scope) == 2
+                # For local scope, qualify variable name with automaton suffix.
                 name = f"{name}.{scope[1]}"
 
             if "type" not in var:
                 raise JaniSyntaxError(f"The type of variable '{name}' must be specified")
+            # Parse the variable type according to the current scope.
             type = self._parseType(model, var["type"], scope)
 
+            # Read transient flag (defaults to False when omitted).
             transient = var.get("transient", False)
 
             initValue = None
             if "initial-value" in var:
+                # Parse and validate initial value expression.
                 initValue = self._parseExpression(model, var["initial-value"], scope)
                 if not initValue.isConstExpression():
                     raise RequiredConstantExpressionError(f"Variable '{name}' initial value must be constant expression")
+                # Evaluate the constant initial expression to a concrete value.
                 initValue = initValue.eval()
             elif transient:
+                # Transient variables require an explicit initial value.
                 raise JaniSyntaxError(f"Transient variable '{name}' must have an initial value")
             elif not type.hasBounds() and type.type == "real":
+                # Unbounded real variables must define an initial value.
                 raise JaniRRequirementError(f"Unbounded and real variable '{name}' must have an initial value")
+            # Register variable in JaniModel with parsed metadata.
             model.addVariable(Variable(name, type, scope, initValue, transient))
 
     def _parseFunctions(self, model: JaniModel, functions, scope):
         """Parse function declarations and definitions."""
+        # Determine whether functions are declared in global scope or automaton-local scope.
         isGlobal = scope[0] == "global"
-        # First parse - declare all functions.
+        # First pass: declare all functions (name, return type, parameters) before parsing bodies.
         for func in functions:
             if "name" not in func:
                 raise JaniSyntaxError("Function must have a name")
+            # Read function name and qualify it for local scope.
             name = func["name"]
             if not isGlobal:
                 assert len(scope) == 2
@@ -319,46 +371,60 @@ class JaniReader(object):
 
             if "type" not in func:
                 raise JaniSyntaxError(f"The type of function '{name}' must be specified")
+            # Parse function return type.
             type = self._parseType(model, func["type"], scope)
 
             if "parameters" not in func:
                 raise JaniSyntaxError(f"Function '{name}' must have a 'parameters' structure")
+            # Parse function parameter list and register declaration in the model.
             params = self._parseParameters(model, func["parameters"], scope, name)
             model.declareFunction(Function(name, type, scope, params))
         
-        # Second parse - process definition and check dependencies.
+        # Second pass: parse function bodies and collect dependencies between functions.
         dependencies = dict()
         for func in functions:
+            # Rebuild function identifier exactly as declared in the first pass.
             name = func["name"]
             if not isGlobal:
                 name = f"{name}.{scope[1]}"
             
+            # Retrieve declared parameters to resolve parameter references inside the body.
             params = model.getFunction(name).parameters
             if "body" not in func:
                 raise JaniSyntaxError(f"Function '{name}' must have a 'body' field")
+            # Parse body expression with current scope and function parameters.
             body = self._parseExpression(model, func["body"], scope, params)
 
+            # Extract referenced symbols from body and keep only function references as dependencies.
             varRefs = self._getVarRefsFromExprStruct(model, func["body"])
             dependencies[name] = set(filter(model.containsFunction, varRefs))
+            # Attach parsed body to the already declared function.
             model.addFunctionBody(name, body)
+        # Validate function dependency graph (e.g., detect circular dependencies).
         self._checkFuncDependencies(dependencies)
 
     def _parseParameters(self, model: JaniModel, parameters, scope, funcName):
         """Parse function parameters."""
+        # Build a mapping: parameter name -> parsed type.
         paramMap = dict()
         for param in parameters:
             if "name" not in param:
                 raise JaniSyntaxError("Function parameter must have a name")
+            # Read parameter name from declaration.
             name = param["name"]
             if name in paramMap:
                 raise JaniSyntaxError(f"Duplicate function parameter '{name}' in function '{funcName}'")
+            # Prevent conflicts between parameter names and existing model variables.
             if model.containsVariable(name):
                 raise JaniSyntaxError(f"Function parameter '{name}' conflicts with existing variable")
                 
             if "type" not in param:
                 raise JaniSyntaxError(f"The type of function parameter '{name}' must be specified")
+            # Parse parameter type in the current scope.
             type = self._parseType(model, param["type"], scope)
+            # Store parsed parameter definition.
             paramMap[name] = type
+        # Return parameter map used by function declaration.
         return paramMap
     
     def _getVarRefsFromExprStruct(self, model: JaniModel, tarExpr):
@@ -403,11 +469,14 @@ class JaniReader(object):
 
     def _parseLocations(self, model: JaniModel, locations, scope):
         """Parse automata locations."""
+        # Extract current automaton name from scope to build fully-qualified local identifiers.
         _, automata = scope
+        # Build mapping: qualified location name -> transient assignments at that location.
         locMap = dict()
         for loc in locations:
             if "name" not in loc:
                 raise JaniSyntaxError("Location must have a name")
+            # Build fully-qualified location name (e.g., locName.automatonName).
             name = loc["name"]
             name = f"{name}.{automata}"
 
@@ -415,73 +484,93 @@ class JaniReader(object):
             for transValue in loc.get("transient-values", []):
                 if "ref" not in transValue:
                     raise JaniSyntaxError("The 'assignment' structure must have a 'ref' field")
+                # Read referenced variable and qualify it when it is automaton-local.
                 ref = transValue["ref"]
                 if not model.isGlobalVariable(ref):
                     ref = f"{ref}.{automata}"
                 if not model.containsVariable(ref):
                     raise JaniSyntaxError(f"Unknown variable '{ref}' reference in location '{name}'")
+                # Only transient variables are allowed in 'transient-values' assignments.
                 if not model.isTransientVariable(ref):
                     raise JaniSyntaxError(f"Contains non-transient variable reference '{ref}'")
                 
                 if "value" not in transValue:
                     raise JaniSyntaxError(f"The 'assignment' structure must have a 'value' field")
+                # Parse assignment value expression in current automaton scope.
                 value = value = self._parseExpression(model, transValue["value"], scope)
 
+                # Collect referenced symbols to enforce transient-values constraints.
                 varRefs = self._getVarRefsFromExprStruct(model, transValue["value"])
                 if varRefs and np.all(list(map(model.isTransientVariable, varRefs))):
                     raise JaniSyntaxError("Value expression for a 'transient-values' structure must not refer to another transient variable")
+                # Store parsed transient assignment for this location.
                 transientValues[ref] = value
+            # Register this location and its transient assignment map.
             locMap[name] = transientValues
+        # Return parsed location structure used by automata construction.
         return locMap
 
     def _parseAutomata(self, model: JaniModel, automata):
         """Parse automata."""
         if "name" not in automata:
             raise JaniSyntaxError("Automata must have a name")
+        # Read automaton name and define local parsing scope for this automaton.
         name = automata["name"]
         scope = ("local", name)
 
+        # Parse automaton-local variables and functions first (needed by later sections).
         self._parseVariables(model, automata.get("variables", []), scope)
         self._parseFunctions(model, automata.get("functions", []), scope)
 
         if "locations" not in automata:
             raise JaniSyntaxError(f"Automata '{name}' must have a 'locations' structure")
+        # Parse location declarations and location-level transient assignments.
         locs = self._parseLocations(model, automata["locations"], scope)
 
         if "initial-locations" not in automata:
             raise JaniSyntaxError(f"Automata '{name}' must have a 'initial-locations' field")
+        # Read and validate initial location set for this automaton.
         initLoc = automata["initial-locations"]
         if len(initLoc) == 0:
             raise JaniSyntaxError(f"Automata '{name}' must have at least one initial location")
         if len(initLoc) > 1:
             raise JaniRRequirementError(f"Automata '{name}' must have only one initial location")
+        # Normalize initial location to fully-qualified location naming.
         initLoc = { f"{initLoc[0]}.{name}" }
         if not initLoc.issubset(locs):
             raise JaniSyntaxError(f"Unknown location '{next(iter(initLoc))}' in automata '{name}'")
         
         if "edges" not in automata:
             raise JaniSyntaxError(f"Automara '{name}' must have an 'edges' structure")
+        # Parse all edge structures in this automaton under local scope.
         edges = [ self._parseEdge(model, edge, scope) for edge in automata["edges"] ]
+        # Build and return Automata object consumed later by model.addAutomata(...).
         return Automata(name, locs, initLoc, edges)
 
     def _parseEdge(self, model: JaniModel, edge, scope):
         """Parse automata edge."""
+        # Extract automaton context to fully-qualify local source/destination/variable names.
         _, automata = scope
         if "location" not in edge:
             raise JaniSyntaxError(f"Edge in automata '{automata}' must have a 'location' field")
+        # Parse source location and normalize it to the qualified location namespace.
         src = edge["location"]
         src = { f"{src}.{automata}" }
 
         if "action" not in edge:
+            # Missing action means internal transition (silent action).
             act = "silent-action"
         else:
+            # Parse explicit action and validate it against model-declared actions.
             act = edge["action"]
             if not model.containsAction(act):
                 raise JaniSyntaxError(f"Unknown action '{act}' in automata '{automata}'")
 
         if "guard" not in edge:
+            # No guard means transition is always enabled.
             guard = Expression("bool", True)
         else:
+            # Parse guard expression from the 'guard.exp' field.
             guard = edge["guard"]
             if "exp" not in guard:
                 raise JaniSyntaxError(f"Guard in automata '{automata}' must have an 'exp' field")
@@ -489,26 +578,32 @@ class JaniReader(object):
         
         if "destinations" not in edge:
             raise JaniSyntaxError(f"Edge in automata '{automata}' must have a 'destinations' structure")
+        # Parse all probabilistic/nondeterministic destinations attached to this edge.
         edgeDests = list()
         for destination in edge["destinations"]:
             if "location" not in destination:
                 raise JaniSyntaxError("Edge destination in automata '{automata}' must have a 'location' field")
+            # Parse destination location and normalize to qualified namespace.
             dest = destination["location"]
             dest = { f"{dest}.{automata}" }
 
             if "probability" not in destination:
+                # Default probability is 1.0 when omitted.
                 prob = Expression("real", 1.)
             else:
+                # Parse destination probability expression from 'probability.exp'.
                 prob = destination["probability"]
                 if "exp" not in prob:
                     raise JaniSyntaxError("The 'probability' structure must have a 'exp' field")
                 prob = self._parseExpression(model, prob["exp"], scope)
             
+            # Parse variable assignments applied when this destination is taken.
             assgns = dict()
             for assgn in destination.get("assignments", []):
                 if "ref" not in assgn:
                     raise JaniSyntaxError("The 'assignment' structure must have a 'ref' field")
                 ref = assgn["ref"]
+                # Resolve assignment target as global variable or qualified local variable.
                 if not model.isGlobalVariable(ref):
                     ref = f"{ref}.{automata}"
                 if not model.containsVariable(ref):
@@ -516,9 +611,12 @@ class JaniReader(object):
 
                 if "value" not in assgn:
                     raise JaniSyntaxError(f"The 'assignment' structure must have a 'value' field")
+                # Parse assignment value expression in current automaton scope.
                 value = self._parseExpression(model, assgn["value"], scope)
                 assgns[ref] = value
+            # Build one parsed edge destination (target locations, probability, assignments).
             edgeDests.append(EdgeDestination(dest, prob, assgns))
+        # Build final parsed edge object consumed by automaton/model construction.
         return Edge(src, act, guard, edgeDests)
 
 

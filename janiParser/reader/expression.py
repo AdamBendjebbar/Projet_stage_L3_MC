@@ -45,11 +45,11 @@ class Expression(object):
         return self._kind
     
     def isConstExpression(self):
-        """Return True if it is a constante expression, otherwise return False."""
+        # Return True if it is a constante expression, otherwise return False.
         return self.kind in ["int", "real", "bool"]
 
     def eval(self, varGetter=None, funcGetter=None, funcVarGetter=None):
-        """Evaluate the expression."""
+        # Evaluate the expression.
         kind = self.kind
         # Evaluate a constant expression.
         if self.isConstExpression():
@@ -107,7 +107,7 @@ class Expression(object):
 
     @staticmethod
     def createConstExpression(value):
-        """Create a constant expression."""
+        # Create a constant expression.
         if isinstance(value, (int, np.integer)):
             return Expression("int", int(value))
         if isinstance(value, (float, np.floating)):
@@ -118,7 +118,7 @@ class Expression(object):
     
     @staticmethod
     def reduceExpression(op, *args: 'Expression'):
-        """Return a reduced expression."""
+        # Return a reduced expression.
         # If-else or call expression.
         if op not in Expression._OPERATORS:
             if op == "ite":

@@ -6,7 +6,7 @@ import os
 from time import time as _timer
 
 import marmote.mdp as mmdp
-import mdptoolbox
+#import mdptoolbox
 
 def saveMDPModelsFromQComp(fullModelName: str, modelParams: dict={}, replace: bool=False) -> list[str]:
     """Download the specified `.jani` file available online at `https://qcomp.org/benchmarks/`,
@@ -365,4 +365,97 @@ def benchmarkJaniMDPModel(fullModelName: str,
                 data[method] = None
                 continue
         res.append(data)
+    return res
+def _benchmarkMarmoteMCSolver(obj_marmote, data_marmote, resolMethodName: str, reps: int) -> float:
+    """Chronomètre une méthode de résolution Marmote pour une Chaîne de Markov."""
+    
+    # Récupération de la distribution initiale (nécessaire pour certaines méthodes)
+    init_dist = data_marmote.getInitDistribution()
+    
+    # Dictionnaire des méthodes spécifiques aux MC basées sur test_final.py
+    supportedMethodMap = {
+        "StationaryDistribution": lambda: obj_marmote.StationaryDistribution(),
+        
+        "StationaryDistributionPower": lambda: obj_marmote.StationaryDistributionPower(
+            100000000, 1e-8, init_dist, False
+        )
+        
+        
+    }
+    
+    if resolMethodName not in supportedMethodMap:
+        raise ValueError(f"Méthode non supportée pour les MC : {resolMethodName}")
+    
+    method = supportedMethodMap[resolMethodName]
+
+    # Benchmarking (identique à utils.py)
+    totalTime = 0.
+    for _ in range(reps):
+        startTime = _timer()
+        method()
+        totalTime += _timer() - startTime
+    return totalTime / reps
+
+
+def benchmarkJaniMCModel(fullModelPath: str,
+                         modelParams: dict = {},
+                         resolMethods: list[str] = ["StationaryDistribution", "StationaryDistributionPower"],
+                         reps: int = 5,
+                         init_mode: str = "first") -> list[dict]:
+    """
+    Construit un modèle de Chaîne de Markov (DTMC) depuis un fichier .jani, 
+    diagnostique sa matrice, puis évalue les performances avec un suivi détaillé.
+    """
+    res = []
+    
+    try:
+        # --- ÉTAPE 1 : PARSING ---
+        print(f"\n [1/4] Lecture et parsing du fichier JANI : {os.path.basename(fullModelPath)}...")
+        reader = JaniReader(fullModelPath, modelParams=modelParams)
+        model = reader.build()
+        
+        # --- ÉTAPE 2 : EXTRACTION ---
+        print(" [2/4] Extraction des données de la Chaîne de Markov (MC)...")
+        mc_data = model.getMCData()
+        dm = DataMarmote(mc_data)
+        
+        # --- ÉTAPE 3 : CRÉATION DE L'OBJET MARMOTE ---
+        print(f" [3/4] Création de la matrice Marmote (Mode d'initialisation : '{init_mode}')...")
+        print(f"    ↳ Taille détectée : {dm.nbStates()} états et {len(mc_data)} transitions.")
+        
+        # On passe le paramètre init_mode choisi par l'utilisateur
+        obj_marmote = dm.createMCObject(init_mode=init_mode) 
+        
+        # --- DIAGNOSTIC ---
+        print("\n     --- DÉBUT DU DIAGNOSTIC DE LA MATRICE ---")
+        transition_matrix = obj_marmote.generator()
+        transition_matrix.Diagnose()
+        print("     --- FIN DU DIAGNOSTIC ---\n")
+        
+        data = {
+            "name": os.path.basename(fullModelPath),
+            "init-mode": init_mode,
+            "number-of-states": dm.nbStates(),
+            "number-of-transitions": len(mc_data) 
+        }
+        
+        # --- ÉTAPE 4 : BENCHMARK DES SOLVEURS ---
+        print(f" [4/4] Lancement des solveurs (Moyenne sur {reps} itérations) :")
+        for method in resolMethods:
+            print(f"    ▶ Test de l'algorithme '{method}'... ", end="", flush=True)
+            try:
+                # Appel de la fonction de chronométrage
+                temps_moyen = _benchmarkMarmoteMCSolver(obj_marmote, dm, method, reps)
+                data[method] = temps_moyen
+                print(f" Terminé en {temps_moyen:.5f} secondes")
+            except Exception as e:
+                print(f" ÉCHEC ({e})")
+                data[method] = None
+                
+        res.append(data)
+        print("\n Benchmark terminé avec succès !")
+        
+    except Exception as e:
+        print(f"\n Erreur globale critique sur le modèle {fullModelPath} : {e}")
+        
     return res

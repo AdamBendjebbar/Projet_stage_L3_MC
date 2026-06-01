@@ -1,4 +1,4 @@
-\documentclass[12pt, a4paper]{article}
+\documentclass[14pt, a4paper]{extarticle}
 
 % --- Paquets Standard ---
 \usepackage[utf8]{inputenc}
@@ -8,14 +8,17 @@
 \usepackage{geometry}
 \usepackage{listings}
 \usepackage{hyperref}
+\usepackage{xurl}
 \usepackage{dirtree}
 \usepackage{xcolor}
 
 \geometry{hmargin=2.5cm, vmargin=2.5cm}
+\setlength{\emergencystretch}{3em}
+\Urlmuskip=0mu plus 1mu
 
 % Configuration pour la syntaxe JSON (Format JANI)
 \lstset{
-    basicstyle=\ttfamily\small,
+    basicstyle=\ttfamily\normalsize,
     numbers=left,
     numberstyle=\tiny\color{gray},
     stepnumber=1,
@@ -37,31 +40,140 @@
 }
 
 % --- Informations du document ---
-\title{Rapport Phase 1 : Modélisation et Description des Chaînes de Markov (MC)}
-\author{Projet Informatique - Documentation \\ 
+\title{Rapport : Modélisation et Description des Chaînes de Markov (MC)}
+\author{Adam BENDJEBBAR\\ 
 \small{Basé sur l'étude de Zeyu TAO et Jiahua LI (Sorbonne Université)}}
-\date{2026}
+\date{Fevrier 2026- Mai 2026}
 
+
+\usepackage{graphicx}
+\usepackage{eso-pic}
+\newcommand\BackgroundPic{%
+  \put(-10,0){%
+    \parbox[b][\paperheight]{\paperwidth}{%
+      \hspace{0.3cm}\includegraphics[height=\paperheight, width=2.3cm]{bordure.png}%
+      \vfill
+    }%
+  }%
+}
 \begin{document}
 
-\maketitle
+\newgeometry{top=2.5cm, bottom=1cm, left=2cm, right=1cm}
+\AddToShipoutPicture*{\BackgroundPic}
+\begin{titlepage}
+\centering
+\includegraphics[width=0.6\textwidth]{logo_Paris_Nanterre_couleur_RVB.png}\\
+\vspace{1cm}
+{\Large L3 MIAGE APP}\\
+\vspace{1cm}
+{\huge\bfseries Rapport : Modélisation et Description
+des Chaînes de Markov (MC)}\\
+\vspace{0.5cm}
+{\bfseries Projet réalisé de février 2026 à mai 2026}\\
+\vspace{2cm}
+\vfill
+\begin{tabular}{l}
+{\large\bfseries Réalisé par}\\[0.2cm]
+Adam BENDJEBBAR\\[0.6cm]
+{\large\bfseries Basé sur l'étude de}\\[0.2cm]
+Zeyu TAO et Jiahua LI (Sorbonne Université)\\[0.6cm]
+{\large\bfseries Encadré par}\\[0.2cm]
+Emmanuel Hyon\\
+\end{tabular}
+\vfill
+\end{titlepage}
+\restoregeometry
+
+\clearpage
+\thispagestyle{empty}
+\section*{Remerciements}
+Je tiens à adresser mes plus sincères remerciements à Monsieur Emmanuel Hyon pour l’accompagnement exceptionnel qu’il m’a apporté tout au long de ce travail. Depuis le 4 février, il m’a reçu régulièrement, avec constance, disponibilité et bienveillance, en prenant le temps de suivre mon avancement, de répondre à mes interrogations et de m’orienter avec précision dans les moments clés du projet. Sa présence a constitué un repère précieux, tant sur le plan méthodologique que sur le plan humain.
+
+Je souhaite également le remercier tout particulièrement pour l’aménagement qu’il m’a proposé à une période compliquée de mon parcours, notamment en raison de l’absence de stage. Cet aménagement a été déterminant : il m’a permis de rester engagé, de conserver un cadre de travail rigoureux et de continuer à progresser malgré les difficultés rencontrées. Sans cette opportunité et sans sa confiance, je n’aurais pas pu avancer dans des conditions aussi constructives.
+
+Ses conseils m’ont aidé à structurer ma réflexion, à clarifier mes objectifs et à renforcer la rigueur de mon travail. Au fil des échanges, j’ai appris à mieux organiser mes idées, à approfondir mes choix techniques et à gagner en autonomie. Son regard exigeant, mais toujours juste, m’a poussé à maintenir un niveau de qualité élevé.
+
+Au-delà de l’aide académique, je tiens à souligner la qualité de son accompagnement humain : son écoute, sa patience et son soutien ont eu un impact réel sur ma motivation. Je lui suis profondément reconnaissant pour le temps qu’il m’a accordé, pour la confiance qu’il m’a témoignée et pour la qualité de l’encadrement qu’il m’a offert.
+
+\clearpage
+% --- TABLE DES MATIÈRES ---
+% Elle est placée ici, après le titre et avant le contenu.
+\tableofcontents
+\clearpage
+
+
 
 \section{Introduction}
-Ce document détaille la première phase de création de l'objet informatique associé aux chaînes de Markov. Avant d'exister sous forme de structure de données en mémoire, la chaîne de Markov est définie par un ensemble de règles mathématiques strictes et une description formelle via le langage JANI. Cette étape de spécification est le "plan d'architecte" nécessaire à la génération dynamique du modèle.
+Ce document détaille une phase clé du projet, directement inspirée par l'étude de Zeyu TAO et Jiahua LI sur la modélisation des chaînes de Markov. Il s'agit d'expliquer le passage critique du concept mathématique abstrait à la création effective de la chaîne de Markov en mémoire informatique.
 
-\section{Fondements Mathématiques de la Phase 1}
+Avant d'exister sous forme de structure de données en mémoire, la chaîne de Markov est un concept mathématique défini par un ensemble de règles strictes et une description formelle via le langage JANI. Cette étape de spécification constitue le « plan d'architecte » nécessaire à la génération dynamique du modèle.
 
-Une chaîne de Markov (MC) est un outil mathématique modélisant un processus stochastique où l'état futur ne dépend que de l'état présent.
+\section{Description du logiciel Marmote}
 
-\subsection{Composantes de la spécification}
-Pour définir l'ensemble des règles de transition, trois composantes sont indispensables :
+Le logiciel Marmote (MARkovian MOdelling Tools and Environments) est une plateforme de programmation performante conçue pour la construction et la résolution de modèles markoviens à espaces d'états discrets. Développé dans un cadre académique et distribué sous licence de logiciel libre (GNU GPL), cet outil se distingue par sa philosophie de transparence, permettant aux étudiants et aux chercheurs d'explorer les mécanismes internes de la résolution matricielle, sans l'opacité des logiciels propriétaires (souvent perçus comme des boîtes noires dont seules les fonctionnalités sont spécifiées).
+
+Au-delà d'un simple solveur, Marmote fonctionne comme une bibliothèque C++ robuste capable de manipuler des espaces d'états massifs tout en garantissant une gestion optimale de la mémoire. Son intérêt majeur réside dans sa fonction de diagnostic avancée, qui analyse la structure du modèle pour détecter les classes récurrentes ou les états absorbants avant tout calcul, assurant ainsi la validité mathématique des résultats de performance.
+
+Marmote intègre des solveurs pour les chaînes de Markov à temps discret et continu (DTMC/CTMC), ainsi que pour les processus de décision markoviens (MDP), offrant des méthodes de résolution telles que les algorithmes avancés comme RLGL.
+
+\section{Objectifs et Missions du Projet}
 \begin{itemize}
-    \item \textbf{L'Espace d'états ($Q$)} : L'ensemble fini $\{q_{1},q_{2},\dots,q_{N}\}$ représentant toutes les situations possibles du système.
-    \item \textbf{La Matrice de transition ($A$)} : Un tableau de taille $N \times N$ où chaque élément $a_{q_{i},q_{j}}$ définit la règle de probabilité de passage :
+  \item \textbf{Analyse du concept mathématique:}Une part prépondérante des activités a d'abord été consacrée à la compréhension du cadre théorique des chaînes de Markov, de leurs fondements probabilistes et de leurs propriétés formelles.
+  \item \textbf{Analyse et compréhension du concept informatique sous-jacent:}Une seconde phase a porté sur l'analyse approfondie du projet à travers son implémentation, de la compréhension de la syntaxe des fichiers JANI jusqu'à la création de la matrice de transition constitutive de la chaîne de Markov en mémoire.
+  \item \textbf{Documentation et harmonisation bilingue du code:}Un travail important de documentation du code a également été mené, avec l'ajout et la reprise de nombreux commentaires explicatifs en français, suivis de leur traduction en anglais (seuls ceux en anglais ont été conservés à la demande de mon tuteur) afin d'améliorer la lisibilité et la maintenabilité du projet pour des collaborateurs de profils variés. Cette mission m'a été explicitement confiée comme une tâche fondamentale. L'analyse du dépôt a montré qu'une partie de ce travail était déjà engagée, mais qu'il restait partiellement traité, voire absent dans certaines portions du code ; une reprise structurée a donc été nécessaire pour homogénéiser la qualité de la documentation technique.
+  \item \textbf{Migration logicielle et diagnostic :} Bien que les étudiants Zeyu TAO et Jiahua LI aient précédemment travaillé sur la version 1.2 du logiciel, une transition vers la version 1.3.1 a été opérée à la suite des récentes mises à jour. Ce changement de version a permis de mobiliser la méthode de diagnostic (\texttt{Diagnose}, issue de la bibliothèque Marmote) sur la chaîne de Markov. Ce diagnostic confirme que le modèle a été correctement traduit en une chaîne de Markov discrète et valide mathématiquement sa structure.
+  \item \textbf{Audit de la classe DataMarmote et constat sur le vecteur initial :} L'étude technique s'est ensuite portée sur la classe \texttt{DataMarmote}, avec un examen particulier de la méthode de création d'objets \texttt{createMCObject}. Le constat a été fait que le vecteur initial ne faisait l'objet d'aucune instanciation concrète. Pour pallier cette lacune, trois solutions d'initialisation ont été développées et intégrées au code. Ces ajouts permettent désormais d'obtenir une chaîne de Markov totalement initialisée et fonctionnelle, comprenant la matrice de transition et le vecteur initial.
+  \item \textbf{Nettoyage de l'environnement et retrait de pymdptoolbox :} Concernant l'environnement d'exécution, il est apparu que la bibliothèque \texttt{pymdptoolbox} était requise de manière obligatoire dans la configuration initiale des travaux précédents. Après une étude rigoureuse de l'architecture du code, les méthodes de construction des récompenses de transition pour cette boîte à outils (\texttt{buildTransitionRewardForMDPToolbox}) dans le fichier \texttt{dataMarmote.py}, ainsi que les importations correspondantes dans le fichier \texttt{utils.py}, ont été mises en commentaires. Cette modification ne change pas la structure ni le fond du projet : cette bibliothèque avait principalement été utilisée pour des comparaisons d'efficacité et d'optimisation lors des benchmarks, en tant que concurrent direct de Marmote et du projet des étudiants Zeyu TAO et Jiahua LI. Cette modification a rendu possible l'exécution fluide du fichier de test.
+  \item \textbf{Configuration des tests:}À des fins de validation, un environnement de test s'appuyant sur le modèle brp.jani a été mis en place, incluant son instantiation et l'appel aux méthodes de distribution stationnaire classique et par la méthode de puissance. 
+  \item \textbf{MODOP de la création de model Jani:}L'ensemble de ces travaux a abouti à la création d'un support de présentation au format PowerPoint (en français et en anglais) explicitant l'intégralité du processus de création d'une chaîne de Markov au sein de l'environnement Marmote.
+\end{itemize}
+
+\section{Fondements Mathématiques des Chaînes de Markov}
+
+Une chaîne de Markov (MC) est un concept mathématique probabiliste modélisant un processus stochastique où l'état futur ne dépend que de l'état présent et est indépendant des états antérieurs (on parle d'absence de mémoire).
+
+\subsection{Composantes de la chaîne de Markov}
+Pour définir cette entité mathématique, trois composantes sont indispensables :
+\begin{itemize}
+    \item \textbf{L'Espace d'états ($Q$)} : Soit $(X_{n})_{n \in \mathbb{N}}$ une séquence de variables aléatoires à valeurs dans un espace d'états fini $S$, défini par :\[S = \{q_{1}, q_{2}, \dots, q_{N}\}\]
+    \item \textbf{La Matrice de transition ($A$)} : Une matrice carrée de dimension $N \times N$ où chaque élément $a_{q_{i},q_{j}}$ définit la règle de probabilité de passage de l'état $a_i$ à l'état $a_j$ :\[
+P = (p_{ij})_{1 \le i, j \le N} = 
+\begin{pmatrix}
+p_{11} & p_{12} & \dots & p_{1N} \\
+p_{21} & p_{22} & \dots & p_{2N} \\
+\vdots & \vdots & \ddots & \vdots \\
+p_{N1} & p_{N2} & \dots & p_{NN}
+\end{pmatrix}
+\]
     \begin{equation}
         a_{q_{i},q_{j}}=P(x_{t+1}=q_{j} \mid x_{t}=q_{i}) \text{}
     \end{equation}
-    \item \textbf{Le Vecteur initial ($\Pi$)} : Définit l'état de départ du système à l'instant $t=1$ : $\pi_{q_{i}}=P(x_{1}=q_{i})$.
+    où chaque coefficient est défini par :
+\[
+p_{ij} = P(X_{n+1} = q_j \mid X_n = q_i)
+\]
+
+Cette matrice vérifie les propriétés suivantes :
+\begin{itemize}
+    \item $\forall i, j \in \{1, \dots, N\}, \quad p_{ij} \ge 0$
+    \item $\forall i \in \{1, \dots, N\}, \quad \sum_{j=1}^{N} p_{ij} = 1$
+\end{itemize}
+    \item \textbf{Le Vecteur initial ($\Pi$)} :La loi de probabilité initiale (ou état initial) est représentée par un vecteur ligne $\pi^{(0)}$, de dimension $N$, dont chaque composante $\pi_{i}^{(0)}$ définit la probabilité que le système démarre dans l'état $q_i$ à l'instant $n=0$ :
+
+\[
+\pi^{(0)} = \begin{pmatrix} \pi_{1}^{(0)} & \pi_{2}^{(0)} & \dots & \pi_{N}^{(0)} \end{pmatrix}
+\]
+
+où chaque coefficient est défini par :
+\[
+\pi_{i}^{(0)} = P(X_0 = q_i)
+\]
+
+Ce vecteur est une distribution de probabilité, il respecte donc :
+\begin{itemize}
+    \item $\forall i \in \{1, \dots, N\}, \quad \pi_{i}^{(0)} \ge 0$
+    \item $\sum_{i=1}^{N} \pi_{i}^{(0)} = 1$
+\end{itemize}
 \end{itemize}
 
 \subsection{Propriétés }
@@ -80,18 +192,21 @@ Pour définir l'ensemble des règles de transition, trois composantes sont indis
 \subsection{Origine du Projet}
 Le projet utilisé dans le cadre de cette étude est hébergé sur le dépôt public GitHub à l'adresse suivante : \url{https://github.com/bellkilo/pAI2D_mdp_languages/tree/main}.
 
-Ce projet constitue l'implémentation logicielle du travail de recherche mené par \textbf{Zeyu TAO} et \textbf{Jiahua LI}, étudiants en Master ANDROIDE à Sorbonne Université en 2025. Ce travail, encadré par Emmanuel Hyon et Pierre-Henri Wuillemin, visait à comparer les méthodes de résolution de Processus de Décision Markoviens (MDP) en utilisant notamment la bibliothèque \textit{Marmote}[cite: 2].
-L'enjeu central est de formaliser le processus de transition entre une spécification textuelle brute (fichier Jani) et une structure mathématique fonctionnelle en mémoire (chaine de Markov).
-\subsection{Récuperation du projet}
-L'importation du projet a été réalisée par clonage du dépôt distant. Cette méthode permet d'obtenir l'arborescence complète développée par \textbf{Zeyu TAO} et \textbf{Jiahua LI}, incluant le module de parsing \texttt{janiParser} et le répertoire de modèles \texttt{benchmarks}.
+Celui-ci constitue l'implémentation logicielle du travail de recherche mené par \textbf{Zeyu TAO} et \textbf{Jiahua LI}, étudiants en Master ANDROIDE à Sorbonne Université en 2025. Ce travail, encadré par Emmanuel Hyon et Pierre-Henri Wuillemin, visait à comparer les méthodes de résolution de Processus de Décision Markoviens (MDP) en utilisant notamment la bibliothèque \textit{Marmote}.
+L'enjeu central est de formaliser le processus de transition entre une spécification textuelle brute (fichier JANI) décrivant des modèles probabilistes et une structure mathématique fonctionnelle en mémoire (chaîne de Markov).
+\subsection{Récupération du projet}
+L'importation du projet a été réalisée par clonage du dépôt distant. Cette méthode permet d'obtenir l'arborescence complète développée par \textbf{Zeyu TAO} et \textbf{Jiahua LI}, incluant le module de parsing \texttt{janiParser} et le répertoire de modèles dans le repertoire \texttt{benchmarks}.
 \subsubsection{Initialisation de l'environnement virtuel}
-Compte tenu des dépendances critiques entre la bibliothèque \textit{Marmote} (compilée en C++) et l'interpréteur Python, un environnement de gestion de paquets \texttt{conda} a été privilégié. La configuration a été réalisée via la séquence de commandes suivantes :
+Compte tenu des dépendances critiques entre la bibliothèque \textit{Marmote} (compilée en C++) et l'interpréteur Python, un environnement de gestion de paquets \texttt{conda} a été privilégié par rapport à \texttt{pip}, ce dernier étant uniquement orienté vers l'écosystème Python. Afin de garantir l'intégrité du système, Conda installe les composants précompilés de Marmote et la version de Python compatible avec toutes les bibliothèques nécessaires. La configuration a été réalisée via la séquence de commandes suivante :
+
+(NOTE:Bien que les travaux précédents s'appuient sur la version \texttt{1.2.0} de \textit{Marmote}, cette étude privilégie l'utilisation de la version \texttt{1.3.1}. 
+Ce changement de version est crucial car il lève une limitation technique majeure présente dans les itérations antérieures. Plus précisément, la version \texttt{1.3.1} stabilise l'interface de communication (\textit{pipeline}) entre le moteur C++ et l'interpréteur Python, rendant possible l'exécution de la fonction \texttt{diagnose()} sur les chaînes de Markov. Cette fonctionnalité était auparavant inutilisable en raison de ruptures de liaison dynamique lors des appels système entre les deux langages.)
 
 \begin{itemize}
     \item \textbf{Création de l'instance :} 
     \begin{verbatim}
-    conda create --name marmote_env -c marmote -c conda-forge \
-    marmote=1.2.0 python=3.10 --yes
+    conda create --name marmote_env -c marmote -c conda-forge 
+marmote=1.3.1 --yes
     \end{verbatim}
     \item \textbf{Activation de l'espace de travail :} 
     \begin{verbatim}
@@ -99,42 +214,65 @@ Compte tenu des dépendances critiques entre la bibliothèque \textit{Marmote} (
     \end{verbatim}
 \end{itemize}
 
-\subsubsection{Installation des bibliothèques de support}
-Afin de permettre la communication entre le parseur JANI et les structures de données de Marmote, plusieurs extensions logicielles ont été injectées via le gestionnaire \texttt{pip} :
-\begin{verbatim}
-pip install typing-extensions requests tqdm pymdptoolbox numpy scipy
-\end{verbatim}
+\subsubsection{Installation des bibliothèques de support dans l'environnement}
+Cet ensemble de dépendances fournit une infrastructure de calcul robuste et des utilitaires de gestion de flux nécessaires à l'exécution du modèle
+\begin{itemize}
+\item \textbf{Installation des bibliothèques de support:} 
+    \begin{verbatim}
+    conda install -c conda-forge numpy scipy typing_extensions 
+    requests tqdm --yes
+    \end{verbatim}
+\end{itemize}
 
 \noindent Cette configuration logicielle permet de lever les contraintes d'importation (notamment pour le décorateur \texttt{@override}) et d'assurer la gestion des matrices creuses nécessaires à la modélisation probabiliste.
 
 \section{Le Langage de Description JANI}
 
-Le format \textbf{JANI} (\textit{JSON Automata Network Interchange}) est une norme de modélisation informatique conçue pour représenter des modèles stochastiques et décisionnels de manière structurée. Contrairement à d'autres langages de description spécifiques à un domaine, JANI a été développé pour favoriser l'interopérabilité entre différents outils de vérification et d'analyse quantitative. En s'appuyant sur le format JSON, JANI propose une structure de données claire, lisible par l'homme et aisément extensible pour les besoins de la recherche en systèmes dynamiques.
+Le format \textbf{JANI} (\textit{JSON Automata Network Interchange}) est une norme de modélisation informatique conçue pour décrire des modèles stochastiques et décisionnels de manière structurée. En s'appuyant sur le format JSON, JANI propose une structure de données claire, lisible par l'homme.
 \subsection{L'intérêt fondamental de JANI}
 
 L'utilisation de JANI présente des avantages majeurs pour la modélisation informatique des chaînes de Markov :
 \begin{itemize}
     \item \textbf{Interopérabilité} : Il permet de convertir des modèles provenant d'autres langages (comme PRISM ou PPDDL) vers un format unique via des outils dédiés (comme Stomr).
-    \item \textbf{Disponibilité de ressources :} Grâce à son adoption croissante, il existe un large éventail de bibliothèques et de \textit{benchmarks} (comme ceux disponibles sur \texttt{qcomp.org}) utilisant ce format, permettant une évaluation rigoureuse des méthodes de résolution.
-    \item \textbf{Structure formelle :} Le format permet une séparation nette entre les composantes du système, facilitant le développement de \textit{readers} ou de parseurs automatisés pour intégrer les modèles dans des solveurs spécifiques.
+    \item \textbf{Disponibilité de ressources :} Il existe un ensemble de références utilisées pour des \textit{benchmarks} (comme ceux disponibles sur \texttt{qcomp.org}) utilisant ce format, permettant une évaluation rigoureuse des méthodes de résolution.
+    \item \textbf{Structure formelle :} Le format permet une séparation nette entre les composantes du système, facilitant le développement de \textit{readers} ou de parseurs automatisés.
 \end{itemize}
 
-\subsubsection{Origine et Acquisition des fichiers (La Source)}
+\subsection{Origine et Acquisition des fichiers (La Source)}
 Tout processus commence par l'obtention d'un fichier JANI, qui sert de support de description au modèle. On distingue trois origines principales :
 \begin{itemize}
-    \item \textbf{Dépôts de Benchmarks (Internet)} : C'est la source la plus répandue. Les fichiers proviennent de bibliothèques mondiales comme la \textit{QVBS (Quantitative Verification Benchmark Suite)}, c'est le référentiel officiel. Il s'agit d'une collection massive de modèles probabilistes (chaînes de Markov, MDP, etc.) au format JANI. Le site \url{https://jani-spec.org} constitue le socle normatif du format JANI. Contrairement aux bibliothèques de modèles complexes comme le QVBS, cette ressource est avant tout dédiée à la définition technique et pédagogique du format.  IMITATOR benchmarks library (v2.0) fournit egalement (toutnau plus 50) modèles d'automatas chronometres et sont disponibles au format jani. Enfin la bibliothèque Jani fournit une petite collection de modeles traduit pour comprendre les concepts de Jani.
-    \item \textbf{Modèles par Conversion} : Une part significative des modèles JANI disponibles aujourd'hui ne sont pas rédigés nativement dans ce format, mais résultent d'une conversion automatisée (via des outils dédiés) à partir de langages de modélisation historiques tels que PRISM (.pm), PPDDL(via des outils dédiés) pour assurer l'interopérabilité avec notre lecteur.
-    \item \textbf{Modèles Natifs} : Au-delà des bibliothèques de benchmarks officiels comme le QVBS, \textit{GitHub} joue un rôle prédominant dans la diffusion de modèles JANI. La plateforme sert d'hébergeur pour les "artefacts" de recherche associés aux publications scientifiques. Pour chaque modèle spécifique utilisé, il est conseillé de consulter le fichier \texttt{README.md} ou l'en-tête du fichier JANI, qui contient généralement la référence bibliographique exacte (le papier de recherche) dont est issu le modèle.
+    \item \textbf{Dépôts de Benchmarks (Internet)} : C'est la source la plus répandue. Les fichiers proviennent de bibliothèques mondiales comme la \textit{QVBS (Quantitative Verification Benchmark Suite)}, qui constitue un référentiel officiel. Il s'agit d'une collection massive de modèles probabilistes (chaînes de Markov, MDP, etc.) au format JANI. Le site \url{https://jani-spec.org} constitue le socle normatif du format JANI. Contrairement aux bibliothèques de modèles complexes comme QVBS, cette ressource est avant tout dédiée à la définition technique et pédagogique du format. La bibliothèque de benchmarks IMITATOR (v2.0) fournit également (au plus 50) modèles d'automates chronométrés disponibles au format JANI. Enfin, la bibliothèque JANI fournit une petite collection de modèles traduits pour comprendre les concepts de JANI.
+    \item \textbf{Modèles par Conversion} : Une part significative des modèles JANI disponibles aujourd'hui ne sont pas rédigés nativement dans ce format, mais résultent d'une conversion automatisée (via des outils dédiés) à partir de langages de modélisation historiques tels que PRISM (.pm), PPDDL(via des outils dédiés).
 \end{itemize}
-
 \subsection{Composants du modèle JANI pour une DTMC}
 
-Informatiquement, une chaîne de Markov décrite en JANI est un ensemble de règles structurées. Avant d'être convertie en objet JaniModel par le parseur puis en objet DataMarmotte interpretable par les solveurs, elle repose sur des briques logiques réparties entre la racine du fichier et le bloc \texttt{automata}.
+D'un point de vue informatique, une chaîne de Markov modélisée via le format JANI ne se résume pas à une simple liste de données, mais constitue un graphe de transition structuré selon une grammaire JSON rigoureuse. Ce format permet de décomposer le système en plusieurs blocs logiques interconnectés :
 
 \subsubsection{Définitions Globales (Racine du fichier)}
 \begin{itemize}
-\item \textbf{Variables :} Elles constituent la mémoire du système et structurent l'espace d'états. Les variables \textit{non-transitoires} définissent l'état global à un instant t, tandis que les variables \textit{transitoires} servent de stockage temporaire pour les calculs internes.
+\item \textbf{\texttt{jani-version} et \texttt{type} :} Identifient la version du format JANI et la nature stochastique du modèle (ex: DTMC pour une chaîne de Markov).
+\begin{verbatim}
+  
+  "jani-version": "version_number", 
+  "type": "type_of_model(DTMC, MDP, etc.)",
+  \end{verbatim}
+\item \textbf{Name :} Il s'agit d'une étiquette textuelle qui sert à identifier le modèle. 
+\begin{verbatim}
+  "name": "model_name",
+\end{verbatim}
+\item \textbf{Variables :} Elles constituent la mémoire du système et structurent l'espace d'états. Les valeurs prises par les variables \textit{non transitoires} définissent une partie de l'état global à un instant \(t\).
+\begin{verbatim}
+  "variables": [
+    { "name": "variable_name", "initial": initial_value,
+     "type":{"base": "type_name","kind": "type_kind", "values": 
+     [value1,...]}}],
+\end{verbatim}
 \item \textbf{Constants :} Ce sont des paramètres fixes (ex : seuils, capacités maximales) qui définissent l'environnement du modèle. Leur valeur reste immuable durant toute l'exécution, facilitant l'instanciation de modèles de tailles différentes.
+\begin{verbatim}
+  "constants": [
+    { "name": "constant_name", "type": "type_name: int, bool, etc." }
+  ]
+\end{verbatim}
 \end{itemize}
 
 
@@ -142,65 +280,80 @@ Informatiquement, une chaîne de Markov décrite en JANI est un ensemble de règ
 L'automate contient la logique de mouvement du système. 
 
 \begin{itemize}
+  \item \textbf{Automata (L'entité) :} C'est le conteneur principal qui regroupe un nom unique, un ensemble de locations, un point de départ et la liste exhaustive des transitions (edges). Dans un système complexe, plusieurs automates peuvent fonctionner en parallèle avant d'être fusionnés lors de la synchronisation.
   \item \textbf{Locations :} La \textit{location} est l'endroit précis où se situe l'automate dans son schéma logique ; elle fonctionne comme une balise de position qui, une fois associée aux valeurs des variables, permet de définir l'état unique du système dans le graphe de transition.
-\item \textbf{Edges (Arcs) :} Ils représentent les règles logiques de transition. Un \textit{edge} définit le passage d'une \textit{location} source vers des destinations potentielles en fonction du contexte.
-\item \textbf{Guards :} Ce sont des expressions booléennes agissant comme des verrous. Une transition n'est activable que si la \textit{guard} est satisfaite par les valeurs actuelles des variables.
-\item \textbf{Destinations et Assignments :} Elles décrivent l'issue de la transition. Les \textit{destinations} listent les probabilités de saut, tandis que les \textit{assignments} modifient physiquement la valeur des variables pour créer informatiquement le nouvel état cible.
-\item \textbf{Actions :} Dans une DTMC, ce sont des étiquettes symboliques optionnelles. Elles servent à nommer les événements ou à permettre la synchronisation. Sans action spécifiée, la transition est dite "silencieuse" et représente une évolution interne.
+\item \textbf{Edges (Arcs) :} Ils représentent les règles logiques de transition. Un \textit{edge} définit le passage d'une \textit{location} source vers des destinations potentielles si les structures de contrôle (\textit{guard}) sont respectées.
+\item \textbf{Guards :} Ce sont des expressions booléennes agissant comme des verrous. Une transition n'est activable que si la \textit{guard} est satisfaite par les valeurs actuelles des variables. Ce sont des amalgames de conditions logiques (ex : $v > 0$) qui filtrent les transitions possibles.
+\item \textbf{Destinations et Assignments :} Elles décrivent l'issue de la transition. Les \textit{destinations} listent les probabilités de saut et la localisation destinatrice, tandis que les \textit{assignments} modifient physiquement la valeur des variables pour créer le nouvel état cible.
+\item \textbf{Actions :} Dans une DTMC, ce sont des étiquettes symboliques optionnelles. Elles servent à nommer les transitions (\textit{edges}) et à permettre la synchronisation. Sans action spécifiée dans une transition, la transition est dite « silencieuse » et représente une évolution interne. En revanche, lorsqu'une action est spécifiée, elle ne peut franchir le seuil d'exécution que si le vecteur de synchronisation associé est entièrement satisfait.
+\item \textbf{System :} Contient deux dictionnaires : \texttt{elements}, qui associe chaque automate à un nom, et \texttt{syncs}, qui contient la logique de synchronisation des transitions lors de la création de l'objet final.
 \end{itemize}
 
-\subsubsection*{Le lien fondamental : La définition de l'état}
+\subsection*{Le lien fondamental : La définition de l'état}
 
-L'état complet du système à un instant donné est défini comme la combinaison unique de la \textit{location} actuelle et des valeurs des variables non-transitoires. Mathématiquement, nous pouvons représenter l'état $s \in S$ par le couple :
+L'état complet du système à un instant donné est défini comme la combinaison unique de la \textit{location} actuelle, des valeurs des variables transitoires et des valeurs des variables non transitoires. Mathématiquement, nous pouvons représenter l'état \(s \in S\) par le couple :
 
-$$ s = (\text{location}, \text{valeurs des variables non-transitoires}) $$
+$$ s = (\text{location}, \text{valeurs des variables non-transitoires}, \text{valeurs des variables transitoires}) $$
 
-Ce couplage est crucial : lors d'une transition, le passage d'un état à un autre est provoqué soit par un changement de \textit{location}, soit par l'affectation (\textit{assignment}) de nouvelles valeurs aux variables, soit par les deux simultanément. Le système possède la propriété de Markov : l'état courant $s_t = (\mathcal{L}_t, \mathcal{V}_t)$ contient toute l'information nécessaire pour déterminer les probabilités des états futurs. Par conséquent, l'historique des transitions précédentes (la trajectoire suivie) est superflu pour définir l'état actuel et pour calculer les transitions sortantes. L'état est une \textit{instantanée} complète qui rend le système \textit{memoryless} (sans mémoire) vis-à-vis de son passé \cite{model.py}
+L'état est une \textit{instantanée} complète qui rend le système \textit{memoryless} (sans mémoire) vis-à-vis de son passé.
 \subsection{Structure du squelette informatique d'une DTMC}
 
 Pour modéliser une Chaîne de Markov à temps discret (DTMC) en JANI, la structure doit refléter le caractère stochastique du système. Contrairement aux modèles décisionnels, l'automate évolue de manière autonome selon des probabilités définies dans les \texttt{destinations}.
 
-\begin{lstlisting}[caption={Structure JANI complète pour une DTMC}]
+\begin{lstlisting}[caption={Structure JANI complète pour une DTMC (générique)}]
 {
-  "jani-version": 1, /* Version du format JANI */
-  "name": "Modele_DTMC_Standard",/* Nom du modele*/
-  "type": "dtmc", /* Type du systeme : dtmc, mdp, etc. */
-  "variables": [ /* Definition des variables d'etat (l'etat global = location + variables) */
-    { "name": "v", "type": "int", "initial": 0 } /* Variable d'etat avec sa valeur initiale */
-  ],
-  "automata": [ /* Definition de l'automate unique pour la chaine */
+  "jani-version": 1,
+  "name": "nom_du_modele",
+  "type": "type_du_modele",
+  "variables": [
     {
-      "name": "MC_Automate",/* Nom de l'automate */
-      "locations": [ /* Definition des locations (positions logiques) */
-        { "name": "loc_0" }, /* Location initiale */
-        { "name": "loc_1" } /* Location secondaire */
+      "name": "nom_variable",
+      "initial-value": 0,
+      "type": "type_variable"
+    }
+  ],
+  "automata": [
+    {
+      "name": "nom_automate",
+      "locations": [
+        { "name": "loc_0" }
       ],
-      "initial-locations": ["loc_0"], /* Location de depart */
-      "edges": [  /* Definition des transitions (edges) entre les locations */
+      "initial-locations": ["loc_0"],
+      "edges": [
         {
-          "location": "loc_0", /* Location source de la transition */
-          "guard": { "exp": "v == 0" }, /* Condition d'activation de la transition */
-          "destinations": [ /* Liste des destinations possibles avec leurs probabilites et assignments */
-            { 
-              "probability": { "exp": 0.9 }, /* Probabilite de transition vers loc_1 */
-              "assignments": [ { "ref": "v", "value": 1 } ] /* Assignment qui modifie la variable v pour definir le nouvel etat */
-            },
-            { 
-              "probability": { "exp": 0.1 },  /* Probabilite de rester dans loc_0 */
-              "assignments": [ { "ref": "v", "value": 0 } ]  /* Assignment qui maintient la variable v a 0, definissant ainsi un etat de self-loop */
+          "location": "loc_0",
+          "guard": { "exp": "condition_generique" },
+          "action": "nom_action",
+          "destinations": [
+            {
+              "location": "loc_0",
+              "probability": { "exp": 1.0 },
+              "assignments": [
+                { "ref": "nom_variable", "value": "nouvelle_valeur" }
+              ]
             }
           ]
         }
       ]
     }
-  ]
+  ],
+  "system": {
+    "elements": [
+      { "automaton": "nom_automate" }
+    ],
+    "syncs": [
+      {
+        "result": "nom_action_resultante",
+        "synchronise": ["nom_action"]
+      }
+    ]
+  },
+  "properties": [ ... ],
+  "constants": [ ... ]
 }
 \end{lstlisting}
 
 
-
-\section{Conclusion de la Phase 1}
-À ce stade, l'objet informatique est une \textbf{entité descriptive}. Il contient l'intelligence du modèle (ses variables et ses règles) mais n'a pas encore été exploré. La phase suivante consistera à utiliser ce squelette pour générer dynamiquement l'espace d'états et construire l'objet de transition en mémoire vive.
 
 \section{Structure du projet et Benchmarks}
 
@@ -224,11 +377,11 @@ Le répertoire \texttt{benchmarks} regroupe l'ensemble des cas d'étude utilisé
 Chaque sous-répertoire contient des fichiers \texttt{.jani} résultant d'une conversion. Voici le détail de ce que contient l'intérieur de ces dossiers une fois la conversion effectuée :
 
 \begin{itemize}
-    \item \textbf{prism2jani} : Ces fichiers contiennent des modèles de vérification formelle (modèles de référence issus de la bibliothèque PRISM). On y trouve principalement des Chaînes de Markov à Temps Discret (DTMC) ou des Processus de Décision Markoviens (MDP) structurés avec des gardes logiques et des probabilités constantes.
+    \item \textbf{prism2jani} : Ce repertoire contient des modèles converti du langage prism vers Jani.
     
-    \item \textbf{ppddl2jani} : L'intérieur de ce dossier est caractérisé par des modèles possédant un très grand nombre de variables d'état (booléens et entiers). Ces fichiers testent la capacité du programme à explorer des espaces d'états massifs issus de la planification automatique.
+    \item \textbf{ppddl2jani} : Ce repertoire contient des modèles converti du langage ppddl vers Jani.
     
-    \item \textbf{modest2jani} : Ces fichiers \texttt{.jani} sont particuliers car ils contiennent souvent plusieurs automates destinés à être synchronisés. L'intérieur de ces modèles définit des actions partagées qui forcent le programme à utiliser sa fonction de synchronisation pour construire l'automate final.
+    \item \textbf{modest2jani} : Ce repertoire contient des modèles converti du langage modest vers Jani.
     
     \item \textbf{mcJani} : Ce répertoire contient des modèles de base. On y trouve des structures simples où l'accent est mis sur la transition directe entre états sans complexité logicielle majeure, servant de référence pour valider les calculs de base de la matrice de transition.
 \end{itemize}
@@ -245,28 +398,29 @@ La présence de dossiers tels que \texttt{prism2jani} ou \texttt{ppddl2jani} té
 
 \subsection{Structure du repertoire janiParser}
 
+\begin{center}
 \dirtree{%
 .1 janiParser/.
 .2 reader/.
-.3 automata.py \DTcomment{Structure des automates et transitions}.
-.3 expression.py \DTcomment{Évaluation logique et mathématique}.
-.3 function.py \DTcomment{Définition des fonctions}.
-.3 property.py \DTcomment{Gestion des propriétés de vérification}.
-.3 state.py \DTcomment{Représentation des états et conversion}.
-.3 variable.py \DTcomment{Types et variables}.
-.2 dataMarmote.py \DTcomment{Pacerelle entre objet DataMarmot et MarkovChain}.
-.2 exception.py \DTcomment{Gestion des erreurs}.
-.2 model.py \DTcomment{Classe JaniModel: pipelline entre le fichier Jani et l'objet DataMarmotte}.
-.2 reader.py \DTcomment{Parseur du fichier JANI}.
-.2 utils.py.
+.3 automata.py.
+.3 expression.py.
+.3 function.py.
+.3 property.py.
+.3 state.py.
+.3 variable.py.
+.2 dataMarmote.py.
+.2 exception.py.
+.2 model.py.
+.2 reader.py.
 }
+\end{center}
 
-Cette automatisation garantit que l'intégrité sémantique du modèle est préservée lors du transfert.
-\section{ Exploration Dynamique et Génération de la Matrice}
+
+\subsection{ Exploration Dynamique et Génération de la Matrice:}
 
 Une fois le modèle JANI chargé, l'outil bascule dans une phase d'exploration active. L'objectif est de transformer les règles symboliques en une structure de données concrète en mémoire vive.
-
-\subsection{La classe \texttt{JaniReader} : Moteur d'importation et de parsing}
+(NOTE: L'architecture logicielle du projet se divise en deux catégories de composants. D'une part, les \textit{classes moteurs} (\texttt{JaniReader}, \texttt{JaniModel}, \texttt{DataMarmote}) qui pilotent la logique globale, la synchronisation parallèle et l'interface avec la bibliothèque Marmote ; celles-ci font l'objet de l'étude méthodologique ci-après. D'autre part, les \textit{classes structures de données} (\texttt{Automata}, \texttt{Edge}, etc.) qui servent de briques de stockage élémentaires ; afin d'alléger le corps de ce document, leur documentation technique exhaustive a été déportée en Annexe \ref{annexe:classes} (\textit{Documentation Exhaustive des Structures Fondatrices et de la Gestion des Erreurs})).
+\subsubsection{La classe \texttt{JaniReader} : Moteur d'importation et de parsing}
 
 La classe \textbf{\texttt{JaniReader}} est le composant responsable de la lecture et de l'interprétation des fichiers au format JANI. Elle agit comme un traducteur capable de transformer une spécification textuelle brute en un objet \textbf{\texttt{JaniModel}}
 
@@ -275,41 +429,48 @@ La classe \textbf{\texttt{JaniReader}} est le composant responsable de la lectur
     
     \item \textbf{Accès hybride et désérialisation (\texttt{\_load})} : Cette méthode assure la flexibilité de l'accès aux données : grâce à la bibliothèque \texttt{requests}, elle peut soit lire un fichier directement sur le disque dur local, soit aller le chercher sur Internet via une requête HTTP. La sortie de cette méthode est un dictionnaire Python dont le contenu est exactement identique au fichier JANI d'origine, mais structuré sous une forme que le programme peut manipuler dynamiquement.
 
-    \item \textbf{Orchestration du modèle (\texttt{build})} : La méthode \texttt{build} lance la construction finale de l'objet \textbf{\texttt{JaniModel}} en appelant en cascade plusieurs méthodes spécialisées, à commencer par \texttt{\_parseModel}. Son but est d'initialiser tous les attributs du \textbf{\texttt{JaniModel}} (actions, variables, automates) en lisant la structure du dictionnaire (\texttt{modelStruct}) obtenue précédemment, garantissant ainsi que chaque élément du fichier JANI est correctement représenté en mémoire.
+    \item \textbf{Orchestration du modèle (\texttt{build})} : La méthode \texttt{build} lance la construction finale de l'objet \texttt{JaniModel} en appelant successivement plusieurs méthodes spécialisées, à commencer par \texttt{\_parseModel}. Son but est d'initialiser tous les attributs du \texttt{JaniModel} (actions, variables, automates) en lisant la structure du dictionnaire (\texttt{modelStruct}) obtenue précédemment, garantissant ainsi que chaque élément du fichier JANI est correctement représenté en mémoire.
+    \item \textbf{Méthode mère de parsing: \texttt{\_parseModel}} : Le parseur orchestre ensuite la lecture séquentielle des composants globaux en commençant par les actions puis la composition du système. Il traite successivement les constantes et les variables globales suivies des fonctions définies par l'utilisateur. L'étape suivante consiste à itérer sur l'ensemble des automates pour les analyser individuellement et les ajouter à la structure globale du modèle.
+    \item \textbf{Le parsing des automates (\texttt{\_parseActions})} : La méthode parcourt les déclarations d'actions et extrait chaque nom pour remplir l'attribut \texttt{actions} de l'objet \texttt{JaniModel}. Cet attribut est un dictionnaire qui associe à chaque nom d'action un index. 
+\item \textbf{Le parsing du système (\texttt{\_parseSystem})} : Cette méthode indexe chaque automate du système, ce qui initialise l'attribut \texttt{automataIndices} de l'objet \texttt{JaniModel} (un dictionnaire qui associe à chaque nom d'automate un index), puis génère la liste \texttt{preSyncActions}, qui crée des couples associant une action résultante à un vecteur recensant les actions synchronisées (contenu dans \texttt{syncs} du fichier JANI).
+\item \textbf{Le parsing des constantes (\texttt{\_parseConstants})} : Cette méthode enregistre chaque constante dans l'objet \texttt{JaniModel}, au sein d'un dictionnaire associant chaque nom à son objet \texttt{Constant}. Elle valide l'existence d'un nom et d'un type, puis détermine la valeur de la constante, soit via les paramètres d'entrée du programme (fournis par l'utilisateur), soit par l'évaluation d'une expression statique. Ce processus permet de fixer des paramètres qui resteront immuables durant toute l'exploration de l'espace d'états.
+    \item \textbf{Le parsing des variables (\texttt{\_parseVariables})} : Cette méthode trie chaque variable pour alimenter soit l'attribut \texttt{self.\_transientVars}, soit \texttt{self.\_nonTransientVars} de l'objet \texttt{JaniModel}. Si le booléen \texttt{transient} est évalué à \texttt{true}, la variable est enregistrée dans le dictionnaire des variables volatiles. Dans le cas contraire, elle est classée dans le dictionnaire des variables non-transitoires.
+    \item \textbf{Le parsing des automates (\texttt{\_parseAutomata})} : La méthode délègue d'abord le traitement des variables locales à \texttt{\_parseVariables}, qui alimente les registres de l'objet \texttt{JaniModel}. Le parseur récupère ensuite l'ensemble des localisations via \texttt{\_parseLocations} et impose strictement la présence d'une unique localisation initiale pour garantir un point de départ déterminé. Enfin, elle extrait l'intégralité des transitions via \texttt{\_parseEdge} pour construire l'objet \texttt{Automata} final. L'ajout de cet objet est effectué par la méthode appelante (\texttt{\_parseModel}), qui insère l'automate créé dans le dictionnaire \texttt{\_nonSyncAutomatas} de \texttt{JaniModel}, en utilisant l'index défini dans \texttt{\_automataIndices} comme clé.
+    
+    \item \textbf{Le parsing des transitions (\texttt{\_parseEdge})} : Cette méthode convertit chaque définition de transition (\texttt{edge}) en un objet structurel comprenant une source, une action (définie comme \textit{silent-action} en l'absence d'action explicite) et une garde. Pour chaque destination, la méthode instancie un objet \texttt{EdgeDestination} qui encapsule la localisation cible, sa probabilité et le dictionnaire des affectations (\texttt{assignments}) associant chaque variable à sa nouvelle expression. Ce processus modélise fidèlement les choix probabilistes du modèle JANI : un même arc peut conduire à différentes destinations selon une distribution définie, chaque branche mettant à jour les variables de manière indépendante. L'ensemble de ces objets est regroupé dans la liste \texttt{edgeDests} pour constituer le comportement complet de l'arête au sein de l'objet \texttt{Edge} final.
+\item \textbf{La synchronisation (\texttt{synchronize})} : Après avoir construit l'objet \texttt{JaniModel} à partir de toutes les instances citées précédemment, la méthode \texttt{synchronize()} orchestre la construction du modèle global en déclenchant un appel en cascade des fonctions \texttt{\_synchronizeAutomata()}, \texttt{synchronizeEdge()} et \texttt{synchronizeEdgeDestination()}. Ce processus commence par la préparation de l'automate global en agrégeant les localisations initiales et l'ensemble des localisations de tous les composants individuels pour définir un espace d'états commun. Ensuite, cette étape combine les transitions portant le nom de l'action résultante (pour toutes les actions résultantes, de façon successive) pour tous les automates concernés, de sorte à obtenir un comportement parfaitement synchronisé. Concrètement, l'algorithme examine l'ensemble des transitions associées à cette action spécifique uniquement dans les automates où la valeur n'est pas définie comme nulle (grâce à \texttt{actionMapEdgesList}, qui répertorie pour chaque automate un dictionnaire contenant \texttt{nom\_action: transitions}). Il réalise ensuite des combinaisons de ces différentes transitions individuelles pour construire les transitions globales du système complet. L'aboutissement de cette étape est la création de l'automate nommé \texttt{Main}, une structure unique qui centralise toutes les localisations et les transitions synchronisées, transformant ainsi une collection de composants isolés en un système complet et cohérent.
 \end{itemize}
-
-
-\subsection{La classe \texttt{JaniModel} : Structure et Exploration}
+\subsubsection{La classe \texttt{JaniModel} : Structure et Exploration}
 La classe \textbf{\texttt{JaniModel}} constitue la représentation pivot du système après le parsing. Son rôle est de centraliser tous les composants (variables, automates, fonctions) et de piloter l'algorithme d'exploration pour transformer une description symbolique en un graphe d'états concret dont les sommets sont des tuples.
 
 \begin{itemize}
-\item \textbf{L'exploration du modèle (\texttt{getMCData})} : Cette méthode déclenche la construction de la sémantique opérationnelle en appelant \textbf{\texttt{exploreStateSpace}}. Ce moteur d'exploration parcourt récursivement toutes les combinaisons de variables possibles à partir de l'état initial pour identifier chaque état atteignable du système en appliquant les gardes et les probabilités définies dans les automates.
-\item \textbf{La structure \texttt{MCData}} : Le processus produit en sortie un dictionnaire \texttt{MCData} structuré. Il contient les \textbf{états initiaux} et les \textbf{états absorbants} sous forme de tuples de valeurs, ainsi que l'ensemble des \textbf{états} découverts, représentés chacun par un tuple unique correspondant à la valeur de chaque variable du modèle.
-\item \textbf{Le dictionnaire de transitions} : L'élément central de cette sortie est le \textbf{dictionnaire de transitions}. Il répertorie, pour chaque état source (tuple), l'ensemble des états destinations (tuples) associés à leurs probabilités respectives, fournissant ainsi la base mathématique nécessaire à la création de l'objet Marmote.
+\item \textbf{Extraction des données pour la chaîne de Markov par la méthode \texttt{getMCData}} : Cette méthode orchestre la création d'un dictionnaire Python contenant l'ensemble des données essentielles à la génération de l'objet \texttt{MCData} (intermédiaire entre cette étape et la chaîne de Markov finale). Elle vérifie d'abord la cohérence du type \texttt{dtmc}, puis s'appuie sur les fonctions \texttt{\_getStateVarInformation} et \texttt{exploreStateSpace} pour extraire les informations nécessaires à la création de la chaîne de Markov, à savoir les états sous forme de tuples, le dictionnaire de transition sous forme de dictionnaire imbriqué (\texttt{tuple(depart): tuple(destination): proba}), les états initiaux et les états absorbants.
+
+\item \textbf{La fonction \texttt{explorestates}} : La méthode exploreStateSpace effectue une exploration exhaustive de l'espace d'états atteignables en partant d'un ensemble d'états initiaux. Pour chaque état évalué, la fonction vérifie s'il répond à la condition terminale, auquel cas il est classé parmi les états absorbants. Si l'état n'est pas terminal, l'algorithme parcourt les transitions possibles définies par l'automate Main, détermine les états suivants valides, puis calcule les probabilités des transitions.   
+
+En fin d'exécution, la méthode restitue quatre structures de données. Elle fournit premièrement un dictionnaire associant les objets états à leur représentation immuable(tuple). Elle retourne deuxièmement l'ensemble des états absorbants identifiés durant le parcours. Elle produit troisièmement un dictionnaire reliant les triplets d'état source, d'état de destination et d'action à leurs probabilités et récompenses respectives. Elle livre finalement un dictionnaire qui attribue un index numérique unique à chaque action recensée au sein du modèle.
+\item \textbf{La fonction \texttt{\_getStateVarInformation}} : Cette méthode attribue un index à chaque variable ainsi qu'à chaque localisation. Concrètement, elle associe d'abord le nom de chaque variable à un index numérique, puis elle attribue également un index à chaque localisation dans un dictionnaire \texttt{stateTemplate}. Le but principal de cette opération est de définir la structure du tuple qui représentera les états du modèle. Elle retourne également deux dictionnaires : l'un associant le nom de variable à son type et l'autre à sa valeur initiale. Si le système comporte plusieurs localisations, on intègre à ces dictionnaires les localisations avec leurs types et leurs valeurs initiales.
 \end{itemize}
 
-\subsection{La classe \texttt{DataMarmote} : Interface vers Marmote}
+\subsubsection{La classe \texttt{DataMarmote} : Interface vers Marmote}
 
 La classe \textbf{\texttt{DataMarmote}} agit comme un adaptateur (wrapper). Son rôle est de traduire le dictionnaire \texttt{MCData} (issu du \texttt{JaniModel}) en objets compatibles avec la bibliothèque Marmote, permettant ainsi de lancer des calculs stationnaires ou des simulations.
 
 \begin{itemize}
-    \item \textbf{Initialisation et Indexation} : À sa création, la classe reçoit le dictionnaire de données et initialise deux structures cruciales : \textbf{\texttt{\_stateTupReprToIdx}} (qui associe chaque tuple d'état à un entier unique) et son inverse \textbf{\texttt{\_idxToStateTupRepr}}. Cette étape est indispensable car Marmote traite les matrices avec des indices entiers, tandis que le modèle JANI manipule des états nommés ou typés.
+    \item \textbf{Initialisation et Indexation} : À sa création, la classe reçoit le dictionnaire de données et initialise deux structures cruciales : \textbf{\texttt{\_stateTupReprToIdx}} (qui associe chaque tuple d'état à un entier unique) et son inverse \textbf{\texttt{\_idxToStateTupRepr}}. Cette étape est indispensable car Marmote traite les matrices avec des indices entiers et non des tuples.
     
-    \item \textbf{La cascade d'appels} : Pour transformer les données en modèle exploitable, la méthode principale \textbf{\texttt{createMarmoteObject}} identifie le type de système. Dans le cas d'une chaîne de Markov (DTMC), elle délègue la construction à la méthode interne \textbf{\texttt{createMCObject}} qui orchestre la création des composants mathématiques.
+    \item \textbf{La cascade d'appels} : Pour transformer les données en modèle exploitable, la méthode principale \textbf{\texttt{createMarmoteObject}} identifie le type de système. Dans le cas d'une chaîne de Markov (DTMC), elle délègue la construction à la méthode interne \textbf{\texttt{createMCObject}} qui orchestre la création de l'objet mathématique.
 
-    \item \textbf{L'instanciation de la \texttt{MarkovChain}} : La méthode \texttt{createMCObject} génère une chaîne de Markov initialisée à partir d'une \textbf{\texttt{SparseMatrix}} (la matrice de transition) et d'un vecteur de probabilités initiales. Ce vecteur est d'abord converti en un objet \textbf{\texttt{DiscreteDistribution}}, puis injecté dans la chaîne de Markov via la méthode \textbf{\texttt{set\_init\_distribution()}}. Cette liaison finale définit mathématiquement l'état de départ du système et permet à Marmote de lancer des analyses de convergence ou des simulations.
+    \item \textbf{L'instanciation de la \texttt{MarkovChain}} : La méthode \texttt{createMCObject} génère une chaîne de Markov initialisée à partir d'une \textbf{\texttt{SparseMatrix}} (la matrice de transition) et d'un vecteur de probabilités initiales. Ce vecteur est d'abord converti en un objet \textbf{\texttt{DiscreteDistribution}}, puis injecté dans la chaîne de Markov via la méthode \textbf{\texttt{set\_init\_distribution()}}. Cette liaison finale définit mathématiquement l'état de départ du système et permet à Marmote de lancer des calculs sur la chaine.
 \end{itemize}
-
 
 \section{Mode Opératoire (MODEOP)}
 
-\noindent Ce mode opératoire détaille les étapes techniques permettant de transformer une spécification de modèle abstraite en une analyse probabiliste concrète. Le processus est orchestré par le script principal afin de garantir la cohérence des données entre le format d'entrée et le moteur de calcul.
-\subsection{Flux d'exécution}
-La fonction \texttt{run\_analysis()} est le point d'entrée unique de l'analyse. Contrairement à une exécution linéaire, elle encapsule toute la logique dans un bloc de contrôle (\texttt{try/except}) pour assurer la sécurité du processus.
-\begin{center}
-  \textbf{\texttt{test\_final.py}}
-\end{center}
 
+
+\noindent Ce mode opératoire détaille les étapes techniques permettant de transformer une spécification de modèle abstraite décrite dans un fichier JANI (au choix) en un modèle probabiliste concret sur lequel l'état stationnaire peut être déterminé.
+
+\subsection{Du fichier JANI, à la chaine de Markov:}
 \begin{lstlisting}
 # 1. Lecture du fichier source JANI
 # Analyse la syntaxe et les parametres du modele
@@ -333,7 +494,9 @@ obj_marmote = dm.createMarmoteObject(init_mode="random")
 
 # 6. Diagnostic de validite
 # Verifie que la matrice est bien stochastique (somme = 1)
-obj_marmote.SimulateChainDT(10, False, True, False).Diagnose()
+transition_matrix = obj_marmote.generator()
+transition_matrix.Diagnose()
+  
 
 # 7. Resolution par le solveur
 # Calcule le vecteur de distribution stationnaire pi
@@ -341,83 +504,127 @@ pi_marmote = obj_marmote.StationaryDistribution()
 \end{lstlisting}
 
 
-\subsection{Détail des étapes}
+\subsection{Le détail des étapes:}
 
 \begin{center}
-  \textbf{PHASE 1 : DU FICHIER BRUT À LA STRUCTURE PYTHON}
+  \textbf{Du modèle JANI à la chaîne de Markov : un processus en 7 étapes}
 \end{center}
 
-\noindent La transformation d'un modèle théorique en un objet de calcul commence par une étape cruciale de lecture et d'interprétation, décomposée comme suit :
+\noindent La chaîne de traitement reste la même, mais présentée ici de façon synthétique :
 
 \begin{itemize}
-  \item \textbf{Étape 1 : Initialisation du traducteur (\texttt{JaniReader})} : La première action du programme consiste à créer une instance de la classe \texttt{JaniReader}. À ce stade, l'objet agit comme un \textbf{traducteur universel} dont le rôle est de préparer l'accès aux données brutes du modèle. Cette phase d'instanciation est hautement paramétrable. Le lecteur est initialisé à partir de deux éléments clés : la \textbf{source du modèle} (chemin local ou URL distante via \texttt{requests}) et les \textbf{paramètres système} (\texttt{modelParams}) qui définissent les dimensions variables du problème avant même que la lecture ne commence. En résumé, cette étape crée l'interface logique nécessaire pour faire le pont entre le stockage physique du fichier et l'intelligence logicielle du projet.
+  \item \textbf{Étape 1 : Initialisation du traducteur (\texttt{JaniReader})} : Le programme crée un lecteur configuré avec la source du modèle (fichier local ou URL) et les paramètres \texttt{modelParams}. Cette étape prépare uniquement le contexte de lecture.
 
-  \item \textbf{Étape 2 : Construction du modèle Python (\texttt{build})} : Une fois le lecteur configuré, l'appel à la méthode \texttt{.build()} déclenche la transformation réelle de la donnée. Le programme quitte alors le monde du "fichier texte" pour entrer dans celui des \textbf{objets Python manipulables}. L'exécution de cette fonction orchestre la \textbf{désérialisation} du JSON, l'\textbf{analyse sémantique} (identification des actions, constantes et automates) et la \textbf{création de l'objet \texttt{JaniModel}}. Contrairement au fichier brut, cet objet est "intelligent" : il peut synchroniser les automates entre eux et gérer les propriétés mathématiques du modèle. C'est cette étape qui fournit une base standardisée et propre, indispensable avant toute injection dans le moteur de calcul \textit{Marmote}.
+  \item \textbf{Étape 2 : Construction du modèle Python (\texttt{build})} : L'appel à \texttt{build()} transforme le JSON JANI en objet \texttt{JaniModel}. Le modèle est alors structuré et exploitable en mémoire.
 
-  \item \textbf{Étape 3 : Extraction des données (\texttt{getMCData})} : Cette étape est le moment où le programme "fouille" dans le modèle intelligent pour en extraire la moelle épinière mathématique. Concrètement, l'instruction \texttt{model.getMCData()} demande au \texttt{JaniModel} de parcourir l'intégralité du système pour identifier deux éléments vitaux : la liste de tous les états possibles (comprenant les etats initiaux) et le dictionnaire des transitions (quelles sont les probabilites de passer d'un état A à un état B). L'intelligence de cette fonction réside dans sa capacité à traduire des concepts informatiques complexes en une structure de données simplifiée (un dictionnaire Python nommé \texttt{mc\_data}). Ce dictionnaire contient non seulement les probabilités, mais aussi les informations sur les états initiaux et les états "absorbants" (ceux où le système s'arrête). 
+  \item \textbf{Étape 3 : Extraction des données (\texttt{getMCData})} : Le \texttt{JaniModel} produit les éléments nécessaires au calcul : états, transitions, états initiaux et états absorbants.
 
-  \item \textbf{Étape 4 : Organisation des données avec \texttt{DataMarmote}} : Une fois les informations extraites, le programme crée un objet \texttt{DataMarmote} qui sert de centre de tri. L'étape la plus cruciale ici est la \textbf{mise en place de l'indexation}. Puisque les mathématiques ne traitent que des nombres, le programme crée automatiquement deux dictionnaires de correspondance : \texttt{\_stateTupReprToIdx} et \texttt{\_idxToStateTupRepr}. Ces outils permettent de faire le lien entre la description textuelle d'un état (le tuple, compréhensible par l'humain) et sa position exacte dans une matrice (l'index numérique, indispensable pour le calcul). Parallèlement, l'objet identifie et stocke les \textbf{états initiaux} et les \textbf{états absorbants}. À ce stade, ces états sont encore conservés sous forme de tuples (des listes de valeurs) afin de garder une trace précise de leur signification d'origine. Cette organisation garantit que chaque point de départ ou point d'arrêt du système est parfaitement répertorié avant que la structure ne soit convertie en une chaîne de Markov purement numérique. C'est ce travail de traduction qui assure que les résultats finaux pourront être réinterprétés correctement par rapport au modèle initial.
-   
-  \item \textbf{Étape 5 : Création de l'objet mathématique (\texttt{createMarmoteObject})} : Cette phase est l'aboutissement du processus. Elle consiste à injecter toutes les informations triées précédemment dans le moteur de calcul pour créer une \textbf{Chaîne de Markov} fonctionnelle. Cette instruction réalise deux opérations majeures :
-    
-  D'abord, elle construit la \textbf{matrice de transition}. C'est un tableau de probabilités qui dicte comment le système se déplace. Pour optimiser la mémoire, le programme utilise une structure dite "creuse" (\texttt{SparseMatrix}), car dans la plupart des modèles réels, un état ne peut sauter que vers quelques voisins, laissant le reste du tableau vide.
+  \item \textbf{Étape 4 : Organisation des données avec \texttt{DataMarmote}} : Les états sont indexés (tuple \(\leftrightarrow\) entier) pour préparer la construction matricielle compatible Marmote.
 
-  Ensuite, elle définit le \textbf{vecteur d'état initial}, c'est-à-dire le point de départ du système. Le programme propose trois modes de configuration pour s'adapter aux besoins de l'analyse :
+  \item \textbf{Étape 5 : Création de l'objet mathématique (\texttt{createMarmoteObject})} : Cette étape construit la matrice de transition creuse (\texttt{SparseMatrix}) puis la distribution initiale. Trois modes d'initialisation sont disponibles :
   \begin{itemize}
-      \item \textbf{Mode "first"} : Le système choisit un point de départ unique. Il attribue une probabilité de $1$ (certitude absolue) au tout premier état initial identifié dans la liste issue du fichier (celui ayant l'index numérique le plus bas via la fonction \texttt{stateToIdx}). Si, par exception, la liste des états initiaux est vide, le programme donne par défaut la probabilité $1$ à l'état situé à l'index $0$.
-      \item \textbf{Mode "uniform"} : Les chances de départ sont réparties équitablement entre tous les états initiaux possibles. Si trois états sont possibles, chacun reçoit 1/3 de probabilité et tout les autres 0.
-      \item \textbf{Mode "random"} : Le programme attribue des poids aléatoires à chaque état initial(de sorte à ce que la somme des probas somme a 1). C'est idéal pour tester la robustesse d'un modèle et voir si le point de départ influence le résultat final.
+      \item \textbf{Mode "first"} : probabilité \(1\) sur le premier état initial (fallback index \(0\) si la liste est vide).
+      \item \textbf{Mode "uniform"} : répartition uniforme sur les états initiaux (fallback index \(0\)).
+      \item \textbf{Mode "random"} : pondération aléatoire normalisée sur les états initiaux (fallback index \(0\)).
   \end{itemize}
+  Le résultat est un objet \texttt{MarkovChain} prêt pour l'analyse.
 
-  Une fois la matrice et le point de départ assemblés, l'objet \texttt{obj\_marmote} est prêt. Ce n'est plus une simple liste de données, mais un outil capable de simuler des trajectoires ou de calculer des équilibres statistiques complexes.
-ssxcsxcbchbhccbqjcbqccjsc
-c
-jsncjscsc   xmxmmxmxmxmxmxmmxmmxm
-Xxxxxxnxnxnxnxnnxnxxnxnxnxnnxnnxnxnxnxxxxnnxnxnxnxnxnxnxnnxnxnxnnxnxnxnhshhsshhshshsshshhsshshhshshshshssss
+  \item \textbf{Étape 6 : Diagnostic de validité} : La méthode \texttt{Diagnose()} vérifie la cohérence de la matrice (notamment la stochasticité des lignes).
+  \item \textbf{Étape 7 : Résolution par le solveur} : La méthode \texttt{StationaryDistribution()} calcule la distribution stationnaire \(\pi\), c'est-à-dire l'équilibre asymptotique de la chaîne.
 \end{itemize}
 
+\section{L'Analyseur Interactif : La Fonction \texttt{run\_analysis}}
 
+Afin d'offrir une interface d'évaluation flexible et accessible, une fonction d'analyse manuelle et interactive nommée \texttt{run\_analysis} a été développée au sein de l'environnement de test (\texttt{test\_final.py}).
 
+\subsubsection{Objectif et Saisie Interactive}
+La fonction \texttt{run\_analysis} a pour but principal de permettre à un opérateur de configurer et d'exécuter à la volée des scénarios de test sur une chaîne de Markov sans avoir à modifier manuellement le code source du projet. \textbf{Son intérêt majeur réside dans le fait qu'elle automatise totalement le processus de création de la chaîne de Markov : de la lecture du fichier brut jusqu'à la génération des structures mathématiques exploitables, aucune intervention technique intermédiaire n'est requise.} Elle remplit ainsi plusieurs rôles critiques lors de la phase de validation :
+\begin{itemize}
+    \item \textbf{Configuration dynamique des constantes BRP :} L'utilisateur est invité à saisir directement dans la console les valeurs des paramètres structurels du protocole, en l'occurrence les constantes $N$ (le nombre de blocs à transférer) et \texttt{MAX} (le seuil maximal de tolérance aux pannes).
+    \item \textbf{Sélection du mode d'initialisation :} Le script propose à l'opérateur de choisir explicitement la stratégie de distribution initiale du vecteur parmi trois solutions implémentées (\texttt{first}, \texttt{uniform} ou \texttt{random}).
+\end{itemize}
 
+\subsubsection{Spécification du Modèle et Fixation du Fichier Source}
+Il est important de noter une contrainte structurelle majeure dans l'implémentation de cette fonction : bien que les paramètres numériques et le mode d'initialisation soient configurables dynamiquement, \textbf{le chemin d'accès au fichier de modélisation a été fixé en dur} (\textit{hardcoded}) dans le script. 
 
-\begin{lstlisting}[caption={Structure JANI complète pour une DTMC}]
-{
-  "jani-version": 1, /* Version du format JANI */
-  "name": "Modele_DTMC_Standard",/* Nom du modele*/
-  "type": "dtmc", /* Type du systeme : dtmc, mdp, etc. */
-  "variables": [ /* Definition des variables d'etat (l'etat global = location + variables) */
-    { "name": "v", "type": "int", "initial": 0 } /* Variable d'etat avec sa valeur initiale */
-  ],
-  "automata": [ /* Definition de l'automate unique pour la chaine */
-    {
-      "name": "MC_Automate",/* Nom de l'automate */
-      "locations": [ /* Definition des locations (positions logiques) */
-        { "name": "loc_0" }, /* Location initiale */
-        { "name": "loc_1" } /* Location secondaire */
-      ],
-      "initial-locations": ["loc_0"], /* Location de depart */
-      "edges": [  /* Definition des transitions (edges) entre les locations */
-        {
-          "location": "loc_0", /* Location source de la transition */
-          "guard": { "exp": "v == 0" }, /* Condition d'activation de la transition */
-          "destinations": [ /* Liste des destinations possibles avec leurs probabilites et assignments */
-            { 
-              "probability": { "exp": 0.9 }, /* Probabilite de transition vers loc_1 */
-              "assignments": [ { "ref": "v", "value": 1 } ] /* Assignment qui modifie la variable v pour definir le nouvel etat */
-            },
-            { 
-              "probability": { "exp": 0.1 },  /* Probabilite de rester dans loc_0 */
-              "assignments": [ { "ref": "v", "value": 0 } ]  /* Assignment qui maintient la variable v a 0, definissant ainsi un etat de self-loop */
-            }
-          ]
-        }
-      ]
-    }
-  ]
-}
+La fonction est explicitement ancrée sur le modèle du protocole de transmission de fichiers borné (\textit{Bounded Retransmission Protocol}), localisé à l'emplacement relatif :
+\begin{lstlisting}
+path = "./benchmarks/mcJani/brp.jani"
 \end{lstlisting}
+Le script est donc configuré comme un banc d'essai dédié exclusivement à la validation de la structure de \texttt{brp.jani} et à la convergence de ses propriétés stochastiques spécifiques.
 
+\subsubsection{Nature des Résultats Renvoyés et Affichés}
+L'exécution complète de la fonction \texttt{run\_analysis} n'effectue aucun calcul de temps ou de performance (benchmark). À la place, elle orchestre l'extraction des données, applique des méthodes issues de la bibliothèque \textit{Marmote} et renvoie visuellement dans la console les résultats bruts suivants :
 
+\begin{enumerate}
+    \item \textbf{Diagnostic de validation mathématique :} En appelant la méthode \texttt{Diagnose()} sur le générateur de la matrice de transition (\texttt{transition\_matrix}), le programme valide la structure stochastique de la chaîne extraite.
+    \item \textbf{Vecteur de distribution stationnaire ($\pi$) par double résolution :} La fonction lance consécutivement deux méthodes de calcul distinctes pour extraire les probabilités d'équilibre :
+    \begin{itemize}
+        \item La méthode itérative de la puissance (\texttt{StationaryDistributionPower}).
+        \item La méthode de résolution classique directe (\texttt{StationaryDistribution}).
+    \end{itemize}
+    Pour chacune de ces deux méthodes, le script filtre, renvoie et affiche la liste de tous les états dont la probabilité de présence finale est significative (supérieure à $10^{-6}$), exprimée sous forme de pourcentage (ex: \textit{"l'État \#X concentre Y \% de la probabilité"}).
+\end{enumerate}
 
+Cette fonction constitue donc un outil de validation interactif à des fins d'inspection visuelle et de vérification de la cohérence mathématique des résultats de distribution stationnaire.
+
+\section{Conclusion}
+
+Ce travail a permis de relier de manière cohérente les fondements théoriques des chaînes de Markov à leur implémentation concrète dans un environnement logiciel réel. L’objectif principal --- comprendre et documenter le passage d’une spécification JANI vers une chaîne de Markov exploitable --- a été atteint à travers une analyse progressive des composants du projet et de leur articulation.
+
+Sur le plan méthodologique, l’étude a d’abord consolidé les bases mathématiques (espace d’états, matrice de transition, distribution initiale), puis détaillé le pipeline informatique complet : lecture du modèle, parsing, synchronisation, exploration de l’espace d’états et construction de l’objet final compatible Marmote. Cette approche a permis de clarifier les responsabilités des classes principales (\texttt{JaniReader}, \texttt{JaniModel}, \texttt{DataMarmote}) et de mettre en évidence la logique globale du système.
+
+Sur le plan technique, plusieurs contributions ont renforcé l’exploitabilité du projet : la migration vers Marmote 1.3.1, l’activation du diagnostic de cohérence, la clarification de l’initialisation de la chaîne via les modes \texttt{first}, \texttt{uniform} et \texttt{random}, ainsi que la rationalisation de l’environnement d’exécution. Le travail de documentation (harmonisation, commentaires en anglais, structuration explicative) a également amélioré la lisibilité et la maintenabilité du code.
+
+Enfin, ce rapport ne se limite pas à un descriptif : il formalise un mode opératoire reproductible, utile pour l’analyse, la validation et l’évolution future de modèles probabilistes. En ce sens, il constitue à la fois une synthèse pédagogique et une base technique solide pour poursuivre l’industrialisation de la chaîne de traitement JANI \(\rightarrow\) Markov.
+
+\section*{Annexe : Documentation Exhaustive des Structures Fondatrices et de la Gestion des Erreurs}
+\label{annexe:classes}
+
+Bien que les composants directeurs du framework, tels que \texttt{JaniReader}, \texttt{JaniModel} et \texttt{DataMarmote}, centralisent l'attention en pilotant les phases macroscopiques de parsing, de synchronisation et d'interface avec le solveur, leur existence opérationnelle serait impossible sans un écosystème de classes sous-jacentes. Ces classes de bas niveau, qualifiées d'élémentaires ou « feuilles », structurent la mémoire physique, portent la sémantique formelle des spécifications JANI et gouvernent la robustesse mathématique du système via une gestion stricte des exceptions. Elles constituent les fondations invisibles mais vitales du projet, garantissant qu'aucune donnée corrompue ou sémantiquement invalide ne vienne altérer la construction de la chaîne de Markov.
+
+\subsection{Modélisation Structurelle et Algorithmique des Composants du Modèle}
+
+\begin{itemize}
+   \item\textbf{La classe Automata :} Structure contenant le coeur de la logique de transition en regroupant son nom, la liste de tous ses états possibles, son point de départ et l'ensemble de ses transitions.
+   \item\textbf{La classe Edge :} Elle définit une transition dans le système, reliant un état source à une ou plusieurs destinations, à condition qu'une action soit déclenchée et qu'une règle de validation (la garde) soit respectée via sa méthode \texttt{isSatisfied()}.
+   \item\textbf{La classe EdgeDestination :} Elle encapsule les détails d'une destination spécifique d'une transition, notamment la localisation cible, la probabilité de transition et les affectations de variables associées.
+   \item\textbf{La classe State :} C'est une entité qui encapsule la localisation courante de l'automate ainsi que ses variables transitoires et permanentes. Elle expose la méthode \texttt{getTupRepr()} pour projeter l'état sous forme de tuple immuable.
+   \item\textbf{La classe Expression :} Elle centralise l'ensemble des opérateurs logiques, arithmétiques et de comparaison en les associant à leurs fonctions \texttt{numpy} correspondantes grâce à sa méthode d'évaluation \texttt{eval()}.
+   \item\textbf{La classe Type :} Responsable du contrôle des types, elle stocke la nature d'une donnée (\texttt{int}, \texttt{bool}) et ses bornes graphiques en validant les affectations via la méthode \texttt{isBoundedConsistent()}.
+   \item\textbf{La classe Constant :} Elle sert à stocker l'identifiant et la valeur fixe des paramètres globaux et immuables du modèle qui restent constants durant l'analyse.
+   \item\textbf{La classe Variable :} Elle modélise les cellules mémoire du projet et intègre la méthode \texttt{instantiate()} permettant de déplier toutes les valeurs physiques admissibles de la variable.
+   \item\textbf{La classe Function :} Elle permet d'enregistrer les fonctions personnalisées de l'utilisateur au sein du fichier JANI pour y injecter dynamiquement des arguments via sa méthode \texttt{addBody()}.
+   \item\textbf{La classe Property :} Dédiée à la vérification des propriétés, elle structure les exigences de sûreté (comme les récompenses ou les états cibles) pour guider les calculs du solveur.
+\end{itemize}
+
+\subsection{Robustesse du Système : Typologie et Contexte des Exceptions}
+
+La conversion d'un modèle abstrait en une structure matricielle opérationnelle est une opération sensible aux erreurs de syntaxe et aux non-conformités sémantiques. Pour prémunir le solveur contre toute anomalie mathématique, une hiérarchie d'exceptions dédiées a été codée dans \texttt{exception.py}, agissant comme des barrières de sécurité à chaque étape du parsing :
+
+\begin{itemize}
+    \item \textbf{\texttt{JaniSyntaxError} :} Levée par le \texttt{JaniReader} dès qu'une clé obligatoire requise par la grammaire officielle JANI (comme le nom du modèle ou la structure du système) est absente ou mal formée.
+    \item \textbf{\texttt{UnsupportedFeatureError} :} Intervient pour notifier que le fichier analysé utilise des fonctionnalités correctes sur le plan théorique mais non supportées par l'implémentation actuelle (comme un type de modèle autre que MDP ou DTMC).
+    \item \textbf{\texttt{RequiredConstantExpressionError} :} Se déclenche lorsque le parseur rencontre une formule dynamique à un emplacement sémantique où la norme JANI impose strictement une valeur constante évaluable à l'initialisation.
+    \item \textbf{\texttt{MissingModelParameterError} :} Intervient lorsqu'une constante du fichier ne possède aucune valeur par défaut et que l'utilisateur a omis de la spécifier dans le dictionnaire \texttt{modelParams}.
+\end{itemize}
+
+\subsection{Bilan Quantitatif des Composants Fondateurs}
+
+En comptabilisant l'intégralité des briques logiques présentées dans cette documentation technique, l'architecture frontale de l'outil repose sur l'introduction de **14 entités fondamentales disjointes** :
+
+\begin{itemize}
+    \item \textbf{10 classes de modélisation et d'évaluation} (\texttt{Automata}, \texttt{Edge}, \texttt{EdgeDestination}, \texttt{State}, \texttt{Expression}, \texttt{Type}, \texttt{Constant}, \texttt{Variable}, \texttt{Function} et \texttt{Property}) qui structurent mathématiquement le modèle en mémoire vive.
+    \item \textbf{4 classes d'exceptions typées} :
+    \begin{itemize}
+        \item \texttt{JaniSyntaxError}
+        \item \texttt{UnsupportedFeatureError}
+        \item \texttt{RequiredConstantExpressionError}
+        \item \texttt{MissingModelParameterError}
+    \end{itemize}
+    qui immunisent le pipeline de calcul contre les défaillances de données.
+\end{itemize}
+
+Ce maillage logiciel garantit une étanchéité parfaite : les erreurs sont interceptées en amont par la hiérarchie des exceptions, tandis que les objets feuilles collaborent harmonieusement pour fournir au solveur une chaîne de Markov sémantiquement irréprochable.
 
 \end{document}

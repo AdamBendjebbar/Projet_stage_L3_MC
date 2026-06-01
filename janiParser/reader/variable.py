@@ -16,11 +16,11 @@ class Type(object):
         return self._bounds
 
     def hasBounds(self):
-        """Return True if type has bounds, otherwise return False."""
+        # Return True if type has bounds, otherwise return False.
         return self._bounds is not None
 
     def isBoundedConsistent(self, value):
-        """Return True if bounds are consistent, otherwise return False."""
+        # Return True if bounds are consistent, otherwise return False.
         return not self.hasBounds() or (self._bounds[0] <= value <= self._bounds[1])
 
     def __eq__(self, value):
@@ -84,26 +84,26 @@ class Variable(object):
         return self._initValue
 
     def hasInitValue(self):
-        """Return True if variable has initial value, otherwise return False."""
+        # Return True if variable has initial value, otherwise return False.
         return self._initValue is not None
 
     def isGlobal(self):
-        """Return True if variable is declared as a global variable, otherwise return False."""
+        # Return True if variable is declared as a global variable, otherwise return False.
         return self._scope[0] == "global"
 
     def resetToInitValue(self):
-        """Reset variable to its initial value."""
+        # Reset variable to its initial value.
         if not self.hasInitValue():
             raise AttributeError("Variable has no initial value")
         self._value = self._initValue
 
     def setValueTo(self, value):
-        """Set variable value to the given value."""
+        # Set variable value to the given value.
         if self._type.isBoundedConsistent(value):
             self._value = value
 
     def instantiate(self):
-        """Return a list of instantiated variables with all possible values."""
+        # Return a list of instantiated variables with all possible values.
         assert not self._transient
         clone = lambda value: Variable(self._name, self._type, self._scope, value, self._transient)
         if self.hasInitValue():

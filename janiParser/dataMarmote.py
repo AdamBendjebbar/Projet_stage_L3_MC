@@ -11,57 +11,69 @@ import marmote.markovchain as mmc
 import marmote.mdp as mmdp
 
 import numpy as np
-import scipy.sparse as ss
+#import scipy.sparse as ss
 
 _penality = -1e32
 
 class DataMarmote:
     def __init__(self, data):
+        # Validate top-level payload type: model data must be provided as a dictionary.
         if not isinstance(data, dict):
             raise TypeError("The given parameter 'data' must be of type 'dict'")
+        # Enforce presence of mandatory fields required to build MC/MDP structures.
         for attr in ["name", "type", "states", "actions",
                      "transition-dict", "absorbing-states", "state-template", "state-variable-types"]:
             if attr not in data:
                 raise Exception()
         
+        # Core model identifiers.
         self._name = data["name"]
         self._type = data["type"]
-         #contient l'ensmebl des etats sous forme de tuple
+        # Set of all encoded states (tuple representation).
         self._states = data["states"]
-         #contient l'ensemble des etats absorbants sous forme de tuple
+        # Set of absorbing states (tuple representation).
         self._absorbingStates = data["absorbing-states"]
+        # Action registry: action label -> action index.
         self._actions: dict = data["actions"]
-         #contient un dictionnaire imbrique de la forme tuple (otigine):tuples(destinations):probabilités
+        # Nested transition map (MC or MDP shape depending on model type).
         self._transitionDict = data["transition-dict"]
+        # Canonical state variable ordering used by tuple encodings.
         self._stateTemplate = data["state-template"]
+        # State variable type metadata.
         self._stateVarTypes = data["state-variable-types"]
 
+        # Optional optimization/control metadata (mainly for MDP families).
         self._criterion = data.get("criterion")
         self._horizon = data.get("horizon")
         self._gamma = data.get("gamma")
 
+        # Apply default finite-horizon/discount placeholders if not provided.
         if self._horizon is None:
             self._horizon = 1
         if self._gamma is None:
             self._gamma = .95
-         #contient les tuples des etast initiaux
+        # Optional initial-state tuple list.
         self._initStates = data.get("initial-states")
+        # Optional declared initial values for state variables.
         self._stateVarInitValues = data.get("state-variable-initial-values")
-         # on cree un dictionnaire avec comme clé le tuple et un index 
+        # Build deterministic tuple->index mapping for matrix row/column addressing.
         self._stateTupReprToIdx = { stateTupRepr: idx for idx, stateTupRepr in enumerate(sorted(self._states)) }
-         # on inverse la clé avce la valeur et la valeur avec la clé
+        # Inverse index->tuple mapping for decoding matrix-based results.
         self._idxToStateTupRepr = { idx: stateTupRepr for stateTupRepr, idx in self._stateTupReprToIdx.items() }
 
+        # Optional pre-instantiated Marmote objects/matrices (if object already materialized upstream).
         self._stateSpace = data.get("state-space")
         self._actionSpace = data.get("action-space")
         self._transitionMatrices = data.get("transition-matrices")
         self._rewardMatrices = data.get("reward-matrices")
 
+        # Flag indicating whether Marmote low-level structures are already instantiated.
         self._isInstantiate = self._stateSpace is not None and \
                               self._actionSpace is not None and \
                               self._transitionMatrices is not None and \
                               self._rewardMatrices is not None
 
+        # Validate semantic consistency of type/parameters after loading all fields.
         self._validate()
 
     def _validate(self):
@@ -260,47 +272,70 @@ class DataMarmote:
         #self._transitionMatrices = transitionMatrix
         #return mmc.MarkovChain(transitionMatrix)
 
+    def getTransitionMatrix(self, init_mode="uniform"):
+        """
+        Ensure the Marmote object is created and return the transition
+        matrix stored in the `_transitionMatrices` attribute.
+        """
+        # Ensure Marmote objects (and the matrix) are initialized.
+        self.createMarmoteObject(init_mode=init_mode)
+        
+        # Return the matrix attribute populated in `createMCObject`.
+        return self._transitionMatrices
+
     def createMCObject(self, init_mode="uniform"):
    
-        import random # Nécessaire pour le mode random
+        # Local import used only for randomized initial-distribution mode.
+        import random
         
-        # 1. Préparation des dimensions
+        # 1) Prepare state-space dimensions and tuple->index resolver.
         n = len(self._states)
         stateTupReprToIdx = self._stateTupReprToIdx
         
-        # 2. Création de l'Espace d'États
+        # 2) Create Marmote state space [0, n-1].
         stateSpace = mc.MarmoteInterval(int(0), int(n - 1))
-        # 3. Construction de la Structure de Transition (inchangé)
+        # 3) Build sparse transition matrix from transition dictionary.
         transitionMatrix = mc.SparseMatrix(stateSpace)
         transitionDict = self._transitionDict
 
         for sTupRepr, sPrimeMap in transitionDict.items():
+            # Resolve current source-state matrix row index.
             sIdx = stateTupReprToIdx[sTupRepr]
             row_sum = 0
             for sPrimeTupRepr, data in sPrimeMap.items():
+                # Resolve destination-state matrix column index.
                 sPrimeIdx = stateTupReprToIdx[sPrimeTupRepr]
+                # Insert transition probability entry P(s, s').
                 transitionMatrix.addEntry(sIdx, sPrimeIdx, data)
+                # Track total outgoing probability for normalization checks.
                 row_sum += data
             
+            # Enforce stochastic-row consistency with tolerance.
             if abs(row_sum - 1.0) > 1e-8:
                 if row_sum < 1.0:
+                    # Complete missing probability mass via self-loop fallback.
                     missing_prob = 1.0 - row_sum
                     transitionMatrix.addEntry(sIdx, sIdx, missing_prob)
                 else:
-                    raise Exception(f"Somme des probabilités invalide : {row_sum}")
+                    # Reject invalid rows whose outgoing probability exceeds 1.
+                    raise Exception(f"Invalid probability sum: {row_sum}")
 
+        # Mark matrix as discrete transition matrix for Marmote MC backend.
         transitionMatrix.set_type(mc.DISCRETE)
 
-        # 4. Création de la Distribution Initiale selon le MODE
+        # 4) Build initial-state distribution according to selected mode.
         init_probas = [0.0] * n
 
-        init_indices = self.getInitStatesIdx() # Les vrais index du JANI
+        # Resolve canonical indices of model-declared initial states.
+        init_indices = self.getInitStatesIdx()
 
         if init_mode == "first":
+            # Deterministic initialization on first declared initial state (fallback index 0).
             idx = init_indices[0] if init_indices else 0
             init_probas[idx] = 1.0
 
         elif init_mode == "uniform":
+            # Uniform mass over declared initial states (fallback all mass on index 0).
             if init_indices:
                 prob = 1.0 / len(init_indices)
                 for idx in init_indices:
@@ -309,8 +344,8 @@ class DataMarmote:
                 init_probas[0] = 1.0
 
         elif init_mode == "random":
+            # Randomized distribution over declared initial states only.
             if init_indices:
-                # Aléatoire UNIQUEMENT sur les vrais états initiaux
                 weights = [random.random() for _ in range(len(init_indices))]
                 total = sum(weights)
                 for i, idx in enumerate(init_indices):
@@ -318,39 +353,34 @@ class DataMarmote:
             else:
                 init_probas[0] = 1.0
                 
-        elif init_mode == "rangeall":
-            # Distribution pondérée (donne plus de poids aux premiers index)
-            # On crée une suite décroissante : n, n-1, n-2...
-            weights = [float(n - i) for i in range(n)]
-            total = sum(weights)
-            init_probas = [w / total for w in weights]
 
-        # Création de l'objet DiscreteDistribution
+        # Create Marmote discrete initial distribution object.
         init_dist = mc.DiscreteDistribution(stateSpace, init_probas)
 
-        # Après création de init_dist
+        # Cache initial distribution for later retrieval/inspection.
         self._initDistribution = init_dist
 
-        # 5. Assemblage final
+        # 5) Assemble final MarkovChain object and attach initial distribution.
         m_chain = mmc.MarkovChain(transitionMatrix)
         m_chain.set_init_distribution(init_dist)
 
+        # Cache generated low-level Marmote structures on the DataMarmote instance.
         self._transitionMatrices = transitionMatrix
         self._stateSpace = stateSpace
         
         return m_chain
 
     def createMarmoteObject(self, discount=False, horizonFini=False, init_mode="uniform"):
-        """Create an associated Marmote instance."""
+        # Create an associated Marmote instance.
         if self._type in ["dtmc", "MarkovChain"]:
-            # On passe le mode à la fonction spécifique
+            # Pass the initialization mode to the MC-specific constructor.
             return self.createMCObject(init_mode=init_mode)
         return self.createMDPObject(discount, horizonFini)
     
     def getInitDistribution(self):
         return getattr(self, "_initDistribution", None)
 
-    def buildTransitionRewardForMDPToolbox(self) -> tuple[list[ss.csc_matrix], np.ndarray]:
+   # def buildTransitionRewardForMDPToolbox(self) -> tuple[list[ss.csc_matrix], np.ndarray]:
         """Build the transition and reward matrices compatible with MDPToolbox.
         
         Returns:
@@ -418,7 +448,7 @@ class DataMarmote:
                         rewardMatrix[sIdx, actIdx] = penality
             transitionMatrices.append(transitionMatrix.tocsr())
         print("Build success - Transition and Reward matrices")
-        return transitionMatrices, rewardMatrix
+       # return transitionMatrices, rewardMatrix
 
     @staticmethod
     def _build_expression(variables, values):
