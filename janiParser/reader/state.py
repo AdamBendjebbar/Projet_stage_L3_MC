@@ -40,7 +40,7 @@ class State(object):
 
         # Build current non-transient valuation for evaluating location transient-values.
         varGetter = { var.name: var.value for var in nonTransientVars.values() }
-        for loc in locs:
+        for loc in setOfLocation:
             if loc not in locs:
                 continue
             # Apply location-specific transient assignments after location transition.

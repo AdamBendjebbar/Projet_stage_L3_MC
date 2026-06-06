@@ -78,7 +78,7 @@ Adam BENDJEBBAR\\[0.6cm]
 {\large\bfseries Basé sur l'étude de}\\[0.2cm]
 Zeyu TAO et Jiahua LI (Sorbonne Université)\\[0.6cm]
 {\large\bfseries Encadré par}\\[0.2cm]
-Emmanuel Hyon\\
+Mr. Emmanuel Hyon\\
 \end{tabular}
 \vfill
 \end{titlepage}
@@ -122,6 +122,7 @@ Marmote intègre des solveurs pour les chaînes de Markov à temps discret et co
   \item \textbf{Analyse et compréhension du concept informatique sous-jacent:}Une seconde phase a porté sur l'analyse approfondie du projet à travers son implémentation, de la compréhension de la syntaxe des fichiers JANI jusqu'à la création de la matrice de transition constitutive de la chaîne de Markov en mémoire.
   \item \textbf{Documentation et harmonisation bilingue du code:}Un travail important de documentation du code a également été mené, avec l'ajout et la reprise de nombreux commentaires explicatifs en français, suivis de leur traduction en anglais (seuls ceux en anglais ont été conservés à la demande de mon tuteur) afin d'améliorer la lisibilité et la maintenabilité du projet pour des collaborateurs de profils variés. Cette mission m'a été explicitement confiée comme une tâche fondamentale. L'analyse du dépôt a montré qu'une partie de ce travail était déjà engagée, mais qu'il restait partiellement traité, voire absent dans certaines portions du code ; une reprise structurée a donc été nécessaire pour homogénéiser la qualité de la documentation technique.
   \item \textbf{Migration logicielle et diagnostic :} Bien que les étudiants Zeyu TAO et Jiahua LI aient précédemment travaillé sur la version 1.2 du logiciel, une transition vers la version 1.3.1 a été opérée à la suite des récentes mises à jour. Ce changement de version a permis de mobiliser la méthode de diagnostic (\texttt{Diagnose}, issue de la bibliothèque Marmote) sur la chaîne de Markov. Ce diagnostic confirme que le modèle a été correctement traduit en une chaîne de Markov discrète et valide mathématiquement sa structure.
+  \item \textbf{Correction d'un manquement dans la méthode \texttt{clone()} :} L'analyse du code a mis en évidence une erreur dans la méthode \texttt{clone()} de la classe \texttt{State}, chargée de construire les états successeurs lors de l'exploration de l'espace d'états. La boucle appliquant les assignations transientes itérait sur l'ensemble des locations de l'automate (locs) au lieu des seules locations actives du nouvel état (setOflocation), produisant des états incorrects sur tout modèle multi-locations avec localisations avec variables transitives . Cette correction a été apportée et validée.
   \item \textbf{Audit de la classe DataMarmote et constat sur le vecteur initial :} L'étude technique s'est ensuite portée sur la classe \texttt{DataMarmote}, avec un examen particulier de la méthode de création d'objets \texttt{createMCObject}. Le constat a été fait que le vecteur initial ne faisait l'objet d'aucune instanciation concrète. Pour pallier cette lacune, trois solutions d'initialisation ont été développées et intégrées au code. Ces ajouts permettent désormais d'obtenir une chaîne de Markov totalement initialisée et fonctionnelle, comprenant la matrice de transition et le vecteur initial.
   \item \textbf{Nettoyage de l'environnement et retrait de pymdptoolbox :} Concernant l'environnement d'exécution, il est apparu que la bibliothèque \texttt{pymdptoolbox} était requise de manière obligatoire dans la configuration initiale des travaux précédents. Après une étude rigoureuse de l'architecture du code, les méthodes de construction des récompenses de transition pour cette boîte à outils (\texttt{buildTransitionRewardForMDPToolbox}) dans le fichier \texttt{dataMarmote.py}, ainsi que les importations correspondantes dans le fichier \texttt{utils.py}, ont été mises en commentaires. Cette modification ne change pas la structure ni le fond du projet : cette bibliothèque avait principalement été utilisée pour des comparaisons d'efficacité et d'optimisation lors des benchmarks, en tant que concurrent direct de Marmote et du projet des étudiants Zeyu TAO et Jiahua LI. Cette modification a rendu possible l'exécution fluide du fichier de test.
   \item \textbf{Configuration des tests:}À des fins de validation, un environnement de test s'appuyant sur le modèle brp.jani a été mis en place, incluant son instantiation et l'appel aux méthodes de distribution stationnaire classique et par la méthode de puissance. 
@@ -220,7 +221,7 @@ Cet ensemble de dépendances fournit une infrastructure de calcul robuste et des
 \item \textbf{Installation des bibliothèques de support:} 
     \begin{verbatim}
     conda install -c conda-forge numpy scipy typing_extensions 
-    requests tqdm --yes
+    requests --yes
     \end{verbatim}
 \end{itemize}
 
@@ -281,7 +282,7 @@ L'automate contient la logique de mouvement du système.
 
 \begin{itemize}
   \item \textbf{Automata (L'entité) :} C'est le conteneur principal qui regroupe un nom unique, un ensemble de locations, un point de départ et la liste exhaustive des transitions (edges). Dans un système complexe, plusieurs automates peuvent fonctionner en parallèle avant d'être fusionnés lors de la synchronisation.
-  \item \textbf{Locations :} La \textit{location} est l'endroit précis où se situe l'automate dans son schéma logique ; elle fonctionne comme une balise de position qui, une fois associée aux valeurs des variables, permet de définir l'état unique du système dans le graphe de transition.
+  \item \textbf{Locations :} La \textit{location} est l'endroit précis où se situe l'automate dans son schéma logique ; elle fonctionne comme une balise de position qui, une fois associée aux valeurs des variables, permet de définir l'état unique du système dans le graphe de transition. Chaque location peut en outre être associée à des variables \textit{transitoires}, dont les valeurs sont recalculées à chaque changement de location. Ces variables transitoires jouent un rôle indirect mais critique : certaines gardes et certaines assignations étant exprimées en fonction d'elles, elles peuvent influencer directement les valeurs des variables non-transitoires du successeur et donc l'identité même des états atteignables.
 \item \textbf{Edges (Arcs) :} Ils représentent les règles logiques de transition. Un \textit{edge} définit le passage d'une \textit{location} source vers des destinations potentielles si les structures de contrôle (\textit{guard}) sont respectées.
 \item \textbf{Guards :} Ce sont des expressions booléennes agissant comme des verrous. Une transition n'est activable que si la \textit{guard} est satisfaite par les valeurs actuelles des variables. Ce sont des amalgames de conditions logiques (ex : $v > 0$) qui filtrent les transitions possibles.
 \item \textbf{Destinations et Assignments :} Elles décrivent l'issue de la transition. Les \textit{destinations} listent les probabilités de saut et la localisation destinatrice, tandis que les \textit{assignments} modifient physiquement la valeur des variables pour créer le nouvel état cible.
@@ -291,9 +292,9 @@ L'automate contient la logique de mouvement du système.
 
 \subsection*{Le lien fondamental : La définition de l'état}
 
-L'état complet du système à un instant donné est défini comme la combinaison unique de la \textit{location} actuelle, des valeurs des variables transitoires et des valeurs des variables non transitoires. Mathématiquement, nous pouvons représenter l'état \(s \in S\) par le couple :
+L'état complet du système à un instant donné est défini comme la combinaison unique de la \textit{location} actuelle des valeurs des variables non transitoires. Mathématiquement, nous pouvons représenter l'état \(s \in S\) par le couple :
 
-$$ s = (\text{location}, \text{valeurs des variables non-transitoires}, \text{valeurs des variables transitoires}) $$
+$$ s = (\text{location}, \text{valeurs des variables non-transitoires}) $$
 
 L'état est une \textit{instantanée} complète qui rend le système \textit{memoryless} (sans mémoire) vis-à-vis de son passé.
 \subsection{Structure du squelette informatique d'une DTMC}
@@ -626,5 +627,19 @@ En comptabilisant l'intégralité des briques logiques présentées dans cette d
 \end{itemize}
 
 Ce maillage logiciel garantit une étanchéité parfaite : les erreurs sont interceptées en amont par la hiérarchie des exceptions, tandis que les objets feuilles collaborent harmonieusement pour fournir au solveur une chaîne de Markov sémantiquement irréprochable.
+
+\section*{Sources}
+Ressources utilisées pour la modélisation, la syntaxe JANI et les benchmarks :
+
+\begin{itemize}
+    \item Marmote : \url{https://marmote.gitlabpages.inria.fr/marmote/}
+    \item Syntaxe JANI : \url{https://docs.google.com/document/d/1BDQIzPBtscxJFFlDUEPIo8ivKHgXT8_X6hz5quq7jK0/edit?pli=1&tab=t.0}
+    \item Benchmark QComp : \url{https://qcomp.org/benchmarks/}
+    \item Bibliothèque de benchmarks IMITATOR : \url{https://www.imitator.fr/library2.html}
+    \item Dépôt GitHub de ahartmanns (modèles JANI) : \url{https://github.com/ahartmanns/jani-models/}
+    \item Projet des anciens élèves : \url{https://github.com/bellkilo/pAI2D_mdp_languages}
+    \item Concept des chaînes de Markov : \url{https://clarolineconnect.univ-lyon1.fr/clarolinepdfplayerbundle/pdf/7359318}
+    \item Spécification officielle du format JANI : \url{https://jani-spec.org}
+\end{itemize}
 
 \end{document}
