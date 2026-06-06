@@ -1,8 +1,13 @@
-# pAI2D_mdp_languages
+# L3 Internship Project — Markov Chain Modelling and Description
 
-Small project for parsing JANI models, building Markov chains/MDPs, and running analysis workflows with Marmote (transition diagnostics and stationary distribution computations).
+This project is inspired by the work of **Zeyu TAO** and **Jiahua LI**, students in the ANDROIDE Master's program at Sorbonne University. Their original repository is available here:
+[https://github.com/bellkilo/pAI2D_mdp_languages](https://github.com/bellkilo/pAI2D_mdp_languages)
 
-## Environment setup (Conda + Marmote)
+This tool parses JANI model files to build Markov chains and analyse them using the **Marmote** library. The pipeline reads a JANI file, explores the state space, builds the transition matrix, and computes the stationary distribution.
+
+---
+
+## Environment Setup (Conda + Marmote)
 
 Create the environment:
 
@@ -16,13 +21,15 @@ Activate it:
 conda activate marmote_env
 ```
 
-Install the additional packages:
+Install the required dependencies:
 
 ```bash
 conda install -c conda-forge numpy scipy typing_extensions requests tqdm --yes
 ```
 
-## Run `test_final.py`
+---
+
+## Running `test_final.py`
 
 From the project root:
 
@@ -30,17 +37,17 @@ From the project root:
 python3 test_final.py
 ```
 
+---
+
 ## What `test_final.py` does
 
 `test_final.py` runs an interactive analysis pipeline:
 
-1. Reads a JANI benchmark model with selected constants.
-2. Builds the internal model representation through `JaniReader`.
-3. Extracts MC data (`getMCData`) and creates a Marmote Markov chain object.
-4. Runs transition matrix diagnostics (`Diagnose()`).
-5. Computes stationary distributions with:
+1. Prompts the user to enter the BRP model constants (`N` and `MAX`) and the initialisation mode (`first`, `uniform`, `random`).
+2. Reads `brp.jani` and builds the internal model representation via `JaniReader`.
+3. Extracts Markov chain data (`getMCData`) and creates the Marmote object via `DataMarmote`.
+4. Runs the transition matrix diagnostic (`Diagnose()`).
+5. Computes the stationary distribution using two independent methods:
    - `StationaryDistributionPower(...)`
    - `StationaryDistribution()`
 6. Prints the most probable equilibrium states.
-
-This script is intended to validate model extraction quality and basic stochastic behavior analysis.
